@@ -55,7 +55,7 @@
 
       <div class="actions">
         <button class="delete-btn" @click="handleDelete">Hapus</button>
-        <button class="maps-btn" v-if="kos.google_maps_url" @click="openMaps">Buka di Google Maps</button>
+        <button class="maps-btn" v-if="kos.google_maps_url" @click="openMaps">Buka di Peta</button>
       </div>
     </div>
   </div>

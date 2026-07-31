@@ -2,14 +2,14 @@
 
 # 🏠 Kosin — Kos Finder
 
-**Platform pencarian kos-kosan berbasis data Google Maps**
+**Platform pencarian kos-kosan berbasis data OpenStreetMap**
 
-Sebuah full-stack web application yang men-scrape data kos-kosan dari Google Maps, menyimpannya ke PostgreSQL, dan menampilkannya dalam dashboard interaktif dengan peta.
+Sebuah full-stack web application yang mengambil data kos-kosan dari OpenStreetMap (Overpass API), menyimpannya ke PostgreSQL, dan menampilkannya dalam dashboard interaktif dengan peta.
 
 ![Stack](https://img.shields.io/badge/Frontend-Vue%203%20%2F%20Vite-42b883)
 ![Stack](https://img.shields.io/badge/Backend-FastAPI-009688)
 ![Stack](https://img.shields.io/badge/Database-PostgreSQL-336791)
-![Stack](https://img.shields.io/badge/Scraper-Google%20Maps%20Places%20API-4285F4)
+![Stack](https://img.shields.io/badge/Data-OpenStreetMap%20%2F%20Overpass-7ebc6f)
 
 </div>
 
@@ -36,7 +36,7 @@ Sebuah full-stack web application yang men-scrape data kos-kosan dari Google Map
 
 | Fitur | Deskripsi |
 |-------|-----------|
-| 🔍 **Scraping Otomatis** | Mengambil data kos-kosan dari Google Maps berdasarkan kota & keyword |
+| 🔍 **Scraping Otomatis** | Mengambil data kos-kosan dari OpenStreetMap berdasarkan kota |
 | 🗺️ **Map View** | Visualisasi lokasi kos-kosan menggunakan Leaflet & OpenStreetMap |
 | 🔎 **Pencarian** | Cari kos berdasarkan nama dengan hasil real-time |
 | ⭐ **Filter Rating** | Filter berdasarkan minimal rating (2+, 3+, 4+) |
@@ -55,8 +55,8 @@ Sebuah full-stack web application yang men-scrape data kos-kosan dari Google Map
 │                      │ ──────► │                             │
 │  ┌────────────────┐  │  REST   │  ┌───────────────────────┐  │
 │  │ Dashboard      │  │  API    │  │ Scraper Module        │  │
-│  │  - Peta        │  │         │  │  (Google Maps API)    │  │
-│  │  - Filter      │  ◄───────  │  │                       │  │
+│  │  - Peta        │  │         │  │  (OSM: Overpass +     │  │
+│  │  - Filter      │  ◄───────  │  │   Nominatim)          │  │
 │  │  - Detail      │  │         │  └──────────┬────────────┘  │
 │  └────────────────┘  │         │             │               │
 │        Vite:5173     │         │  ┌──────────▼────────────┐  │
@@ -69,9 +69,9 @@ Sebuah full-stack web application yang men-scrape data kos-kosan dari Google Map
 
 ### Alur Kerja
 
-1. User membuka dashboard dan memilih **kota** + **keyword** (contoh: "kos kosan")
+1. User membuka dashboard dan memilih **kota**
 2. Frontend mengirim request `POST /api/scrape` ke backend
-3. Backend memanggil **Google Places API** untuk mencari & mengambil detail kos-kosan
+3. Backend melakukan **geocode kota** via Nominatim, lalu menarik data kos-kosan (guest house/apartemen) dari **Overpass API** (OpenStreetMap)
 4. Data dinormalisasi, di-deduplicate, lalu disimpan ke **PostgreSQL**
 5. Frontend menampilkan hasil sebagai **kartu** dan **marker di peta**
 6. User dapat klik kartu untuk melihat **detail lengkap** kos-kosan
@@ -89,7 +89,7 @@ kosin/
 │   │   ├── database.py              # Koneksi PostgreSQL async (SQLAlchemy)
 │   │   ├── models.py                # ORM model tabel `kos`
 │   │   ├── schemas.py               # Pydantic schemas (request/response)
-│   │   ├── scraper.py               # Google Maps scraper engine (+ mock mode)
+│   │   ├── scraper.py               # OSM scraper engine (Overpass + Nominatim, + mock mode)
 │   │   └── routers/
 │   │       ├── __init__.py
 │   │       ├── scraper.py           # POST /api/scrape
@@ -128,7 +128,7 @@ kosin/
 | [FastAPI](https://fastapi.tiangolo.com/) | 0.115 | Web framework async |
 | [SQLAlchemy](https://www.sqlalchemy.org/) | 2.0 | ORM database |
 | [asyncpg](https://magicstack.github.io/asyncpg/) | 0.30 | PostgreSQL driver async |
-| [googlemaps](https://github.com/googlemaps/google-maps-services-python) | 4.10 | Client Google Maps API |
+| [httpx](https://www.python-httpx.org/) | 0.28 | HTTP client (Overpass & Nominatim) |
 | [Pydantic](https://docs.pydantic.dev/) | 2.10 | Validasi & serialisasi data |
 | [uvicorn](https://www.uvicorn.org/) | 0.34 | ASGI server |
 
@@ -144,6 +144,14 @@ kosin/
 | Teknologi | Versi |
 |-----------|-------|
 | [PostgreSQL](https://www.postgresql.org/) | 14+ (tested on 17) |
+
+### Sumber Data
+| Teknologi | Fungsi |
+|-----------|--------|
+| [Overpass API](https://overpass-api.de/) | Mengambil data kos-kosan (tag `tourism=guest_house`, `tourism=apartment`, `building=apartments`) |
+| [Nominatim](https://nominatim.openstreetmap.org/) | Geocode nama kota menjadi bounding box |
+
+> Data © OpenStreetMap contributors (lisensi [ODbL](https://www.openstreetmap.org/copyright)) — atribusi sudah ditampilkan di footer aplikasi.
 
 ---
 
@@ -225,17 +233,9 @@ cp .env.example .env
 | Variable | Deskripsi | Contoh |
 |----------|-----------|--------|
 | `DATABASE_URL` | Koneksi PostgreSQL | `postgresql+asyncpg://postgres:admin@localhost:5432/kos_finder` |
-| `GOOGLE_MAPS_API_KEY` | API key Google Maps | `AIzaSy...` |
+| `OVERPASS_API_URL` | Endpoint Overpass API (opsional, ada fallback mirror) | `https://overpass-api.de/api/interpreter` |
 
-### Mendapatkan Google Maps API Key
-
-1. Buka [Google Cloud Console](https://console.cloud.google.com/)
-2. Buat project baru (atau pilih existing)
-3. Aktifkan **Places API**
-4. Buat API key di **Credentials → Create Credentials → API Key**
-5. Tempel key tersebut ke `GOOGLE_MAPS_API_KEY` di `.env`
-
-> ⚠️ **Tanpa API key**, scraper berjalan dalam **mock mode** dan mengembalikan data contoh (3 kos dummy) agar pengembangan tetap berjalan.
+> ⚠️ **Jika Overpass/Nominatim tidak bisa diakses** (offline / rate-limited), scraper berjalan dalam **mock mode** dan mengembalikan 3 data dummy agar pengembangan tetap berjalan.
 
 ---
 
@@ -301,7 +301,7 @@ POST /api/scrape
 | Field | Tipe | Deskripsi | Wajib |
 |-------|------|-----------|-------|
 | `city` | string | Nama kota target | ✅ |
-| `keyword` | string | Keyword pencarian (default: `"kos kosan"`) | ❌ |
+| `keyword` | string | Keyword pencarian (diabaikan pada data OSM) | ❌ |
 
 **Contoh:**
 ```json
@@ -437,12 +437,6 @@ DELETE /api/kos/{id}
 - [ ] Deployment ke production
 - [ ] Unit & integration testing
 - [ ] CI/CD pipeline
-
----
-
-## 📝 Lisensi
-
-Proyek ini dibuat untuk tujuan pembelajaran dan pengembangan.
 
 ---
 

@@ -9,12 +9,6 @@
     </div>
     <div class="filter-section">
       <input v-model="search" placeholder="Cari nama kos..." @input="emitFilter" />
-      <select v-model="minRating" @change="emitFilter">
-        <option value="">Semua Rating</option>
-        <option value="4">4+</option>
-        <option value="3">3+</option>
-        <option value="2">2+</option>
-      </select>
       <select v-model="sort" @change="emitFilter">
         <option value="created_at">Terbaru</option>
         <option value="rating">Rating</option>
@@ -33,7 +27,6 @@ const emit = defineEmits(['scrape', 'filter'])
 const city = ref('')
 const keyword = ref('kos kosan')
 const search = ref('')
-const minRating = ref('')
 const sort = ref('created_at')
 
 function emitScrape() {
@@ -43,7 +36,6 @@ function emitScrape() {
 function emitFilter() {
   emit('filter', {
     search: search.value || undefined,
-    min_rating: minRating.value ? Number(minRating.value) : undefined,
     sort: sort.value,
   })
 }

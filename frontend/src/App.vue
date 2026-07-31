@@ -7,6 +7,9 @@
       <Dashboard v-if="view === 'dashboard'" @view-detail="viewDetail" />
       <DetailKos v-else-if="view === 'detail'" :kos-id="selectedId" @back="view = 'dashboard'" />
     </main>
+    <footer class="footer">
+      Data © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors (ODbL)
+    </footer>
   </div>
 </template>
 
@@ -48,5 +51,14 @@ main {
   max-width: 1200px;
   margin: 0 auto;
   padding: 16px;
+}
+.footer {
+  text-align: center;
+  font-size: 12px;
+  color: #888;
+  padding: 16px;
+}
+.footer a {
+  color: #888;
 }
 </style>

@@ -14,7 +14,7 @@ class KosBase(BaseModel):
     total_reviews: Optional[int] = None
     phone: Optional[str] = None
     website: Optional[str] = None
-    opening_hours: Optional[dict] = None
+    opening_hours: Optional[list] = None
     price_range: Optional[str] = None
     photos: Optional[list] = None
     google_maps_url: Optional[str] = None
