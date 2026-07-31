@@ -426,17 +426,35 @@ DELETE /api/kos/{id}
 
 ## 🗺️ Roadmap
 
-- [x] Scraping data kos-kosan dari Google Maps
-- [x] Dashboard dengan map view (Leaflet)
+### ✅ Selesai
+
+- [x] Scraping data kos-kosan dari OpenStreetMap (Overpass + Nominatim, fallback mock)
+- [x] Dashboard dengan map view (Leaflet/OSM)
 - [x] Filter & sorting data
 - [x] Halaman detail kos-kosan
+
+### 🔜 Berikutnya
+
+- [ ] Fitur promosi kos berbayar (featured) + form klaim owner + verifikasi admin
 - [ ] Harga kos-kosan spesifik (per bulan)
 - [ ] Autentikasi user
 - [ ] Favorit / bookmark kos
+- [ ] Pagination UI di frontend
 - [ ] Jadwal scraping otomatis (cron)
 - [ ] Deployment ke production
 - [ ] Unit & integration testing
 - [ ] CI/CD pipeline
+
+### 🗺️ Migrasi Google Maps (nanti)
+
+> Data Google Places punya kualitas lebih kaya (rating, review, foto), tapi penyimpanan permanen dibatasi ToS — solusinya arsitektur **live-fetch**: simpan hanya `place_id`, detail di-fetch real-time dengan cache pendek.
+
+- [ ] Aktifkan Places API (New) + Maps JavaScript API + billing
+- [ ] Buat 2 API key: server (restrict by IP) & browser (restrict by referrer)
+- [ ] Client `places.py` (searchText, searchById batch, photo media) dengan cache ≤ 24 jam
+- [ ] Kolom `place_id` & `source` di tabel `kos`, dedup berbasis `place_id`
+- [ ] Ganti peta Leaflet → Google Maps JavaScript API
+- [ ] Evaluasi Local Lists Terms Google sebelum monetisasi skala besar
 
 ---
 
