@@ -436,6 +436,19 @@ DELETE /api/kos/{id}
 
 ---
 
+## 🧪 Testing
+
+Hasil pencarian memakai **loading optimistik**: kartu kos langsung dirender dari data yang sudah ada di database sementara scrape kota baru berjalan di latar belakang (ditandai overlay "Mencari data baru…"). Skeleton hanya muncul saat fetch database berjalan atau saat kota belum punya data sama sekali — perilaku ini **identik di semua ukuran layar**; breakpoint hanya mengubah layout grid (desktop: list + map 2 kolom, mobile: 1 kolom), bukan render datanya.
+
+```bash
+cd frontend
+npm run test:e2e   # Playwright — render desktop (1280px) & mobile (390px), alur scrape
+```
+
+Test meng-stub API (tanpa backend/PostgreSQL/Google) dan memverifikasi: kartu kos lengkap (foto, badge sumber, rating, alamat, chip kota/kecamatan) muncul di kedua breakpoint; skeleton hilang setelah load selesai; hasil lama tetap tampil saat scrape berjalan maupun gagal.
+
+---
+
 ## 🗃️ Data Model
 
 ### Tabel `kos`

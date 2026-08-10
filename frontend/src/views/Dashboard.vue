@@ -25,16 +25,17 @@
 
     <FilterBar
       :loading="loading"
+      :scraping="scraping"
       :filters="filters"
       :initial-city="initialCity"
       @scrape="handleScrape"
       @filter="handleFilter"
     />
 
-    <SkeletonGrid v-if="loading" />
+    <SkeletonGrid v-if="loading || (scraping && !kosList.length)" />
 
     <StateCard
-      v-else-if="error"
+      v-else-if="error && !kosList.length"
       type="error"
       icon="alert"
       title="Terjadi kesalahan"
@@ -48,7 +49,7 @@
 
     <div v-else-if="kosList.length" class="content">
       <div class="list-wrap">
-        <div class="kos-list" :class="{ 'is-filtering': filtering }">
+        <div class="kos-list" :class="{ 'is-filtering': filtering || (scraping && kosList.length) }">
           <KosCard
             v-for="kos in kosList"
             :key="kos.id"
@@ -63,6 +64,10 @@
         <div v-if="filtering" class="list-overlay">
           <span class="spinner-md"></span>
           <span>Memfilter…</span>
+        </div>
+        <div v-else-if="scraping" class="list-overlay">
+          <span class="spinner-md"></span>
+          <span>Mencari data baru untuk {{ scrapingCity }}…</span>
         </div>
       </div>
 
@@ -81,7 +86,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, inject } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, inject } from 'vue'
 import FilterBar from '../components/FilterBar.vue'
 import KosCard from '../components/KosCard.vue'
 import MapView from '../components/MapView.vue'
@@ -99,6 +104,8 @@ const kosList = ref([])
 const loading = ref(false)
 const loadingMore = ref(false)
 const filtering = ref(false)
+const scraping = ref(false)
+const scrapingCity = ref('')
 const error = ref('')
 const filters = ref({})
 const page = ref(0)
@@ -107,13 +114,14 @@ const total = ref(0)
 const PAGE_SIZE = 20
 
 let requestSeq = 0
+let scrapeSeq = 0
 
 const initialCity = props.prefillCity || ''
 
 const activeCity = computed(() => filters.value.city || initialCity || '')
 
 const dashSub = computed(() => {
-  if (loading.value) {
+  if (loading.value || scraping.value) {
     return activeCity.value
       ? `Mencari data untuk ${activeCity.value} dari Google Maps — ini bisa butuh beberapa saat.`
       : 'Memuat data…'
@@ -160,20 +168,40 @@ async function loadKos(params = {}, reset = true) {
 }
 
 async function handleScrape({ city, keyword, district }) {
-  loading.value = true
+  const myScrape = ++scrapeSeq
+  scraping.value = true
+  scrapingCity.value = city
   error.value = ''
+
+  const params = { city, district: district || undefined }
+
   try {
-    await triggerScrape(city, keyword, district)
-    filters.value = {
-      ...filters.value,
-      city,
-      district: district || undefined,
-      search: undefined,
+    const [scrapeRes] = await Promise.allSettled([
+      triggerScrape(city, keyword, district),
+      loadKos(params, true),
+    ])
+
+    if (myScrape !== scrapeSeq) return
+
+    if (scrapeRes.status === 'fulfilled') {
+      filters.value = {
+        ...filters.value,
+        city,
+        district: params.district,
+        search: undefined,
+      }
+      await loadKos(filters.value, true)
+    } else {
+      const e = scrapeRes.reason
+      const msg = 'Gagal scrape: ' + (e.response?.data?.detail || e.message)
+      if (kosList.value.length) {
+        toast(msg, 'error')
+      } else {
+        error.value = msg
+      }
     }
-    await loadKos(filters.value, true)
-  } catch (e) {
-    error.value = 'Gagal scrape: ' + (e.response?.data?.detail || e.message)
-    loading.value = false
+  } finally {
+    if (myScrape === scrapeSeq) scraping.value = false
   }
 }
 
@@ -224,6 +252,11 @@ onMounted(() => {
   } else {
     loadKos()
   }
+})
+
+onBeforeUnmount(() => {
+  requestSeq += 1
+  scrapeSeq += 1
 })
 </script>
 

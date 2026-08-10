@@ -1,11 +1,18 @@
 <template>
   <div class="map-wrap">
     <div ref="mapContainer" class="map"></div>
-    <div v-if="error" class="map-error">
+    <div v-if="error" class="map-state map-error">
       <span class="state-mark">
         <AppIcon name="map-pin" :size="26" />
       </span>
+      <strong>Peta belum aktif</strong>
       <p>{{ error }}</p>
+    </div>
+    <div v-else-if="mapReady && markerCount === 0" class="map-state map-empty">
+      <span class="state-mark">
+        <AppIcon name="map-pin" :size="24" />
+      </span>
+      <p>Tidak ada titik lokasi untuk daftar ini. Cari kota lain untuk melihat posisi kos di peta.</p>
     </div>
   </div>
 </template>
@@ -19,6 +26,8 @@ const props = defineProps({ markers: Array })
 
 const mapContainer = ref(null)
 const error = ref('')
+const mapReady = ref(false)
+const markerCount = ref(0)
 
 let googleMaps = null
 let map = null
@@ -51,6 +60,7 @@ async function initMap() {
       mapId: undefined,
       backgroundColor: '#e8eef7',
     })
+    mapReady.value = true
     updateMarkers()
   } catch (e) {
     console.error('Gagal memuat Google Maps:', e)
@@ -90,6 +100,7 @@ function updateMarkers() {
   markersLayer = []
 
   const valid = props.markers.filter(m => m.latitude && m.longitude)
+  markerCount.value = valid.length
   if (valid.length === 0) return
 
   const icon = {
@@ -141,7 +152,7 @@ onBeforeUnmount(() => {
   border-radius: inherit;
 }
 
-.map-error {
+.map-state {
   position: absolute;
   inset: 0;
   display: flex;
@@ -149,10 +160,34 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background: var(--surface-2);
   border-radius: inherit;
   text-align: center;
   padding: 24px;
+}
+
+.map-error {
+  background: var(--surface-2);
+}
+
+.map-error strong {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.map-empty {
+  background: rgba(244, 247, 252, 0.85);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
+.map-state p {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 340px;
+  line-height: 1.6;
 }
 
 .state-mark {
@@ -164,12 +199,5 @@ onBeforeUnmount(() => {
   border-radius: 16px;
   background: var(--accent-soft);
   color: var(--accent);
-}
-
-.map-error p {
-  font-size: 13px;
-  color: var(--muted);
-  max-width: 340px;
-  line-height: 1.6;
 }
 </style>

@@ -32,6 +32,11 @@ Thumbs.db
 *.log
 logs/
 
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+
 # Database
 *.db
 *.sqlite

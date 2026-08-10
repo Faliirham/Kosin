@@ -33,13 +33,13 @@
             aria-label="Kecamatan atau kelurahan"
           />
         </div>
-        <button class="btn btn-primary" type="submit" :disabled="loading || !city">
-          <span v-if="loading" class="spinner"></span>
+        <button class="btn btn-primary" type="submit" :disabled="loading || scraping || !city">
+          <span v-if="loading || scraping" class="spinner"></span>
           <AppIcon v-else name="search" :size="17" />
-          <span>{{ loading ? 'Mencari…' : 'Cari' }}</span>
+          <span>{{ loading || scraping ? 'Mencari…' : 'Cari' }}</span>
         </button>
       </form>
-      <p v-if="loading && city" class="scrape-status">
+      <p v-if="(loading || scraping) && city" class="scrape-status">
         <AppIcon name="compass" :size="13" />
         Mencari kos di {{ city }}{{ scrapeDistrict ? `, ${scrapeDistrict}` : '' }} — data ditarik langsung dari Google Maps, ini butuh beberapa saat.
       </p>
@@ -111,7 +111,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import AppIcon from './AppIcon.vue'
 
-const props = defineProps({ loading: Boolean, filters: Object, initialCity: String })
+const props = defineProps({ loading: Boolean, scraping: Boolean, filters: Object, initialCity: String })
 const emit = defineEmits(['scrape', 'filter'])
 
 const city = ref('')
