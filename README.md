@@ -2,14 +2,14 @@
 
 # 🏠 Kosin — Kos Finder
 
-**Platform pencarian kos-kosan dengan data Google Maps & OpenStreetMap**
+**Platform pencarian kos-kosan dengan data Google Maps (geocode fallback OSM)**
 
-Sebuah full-stack web application yang mencari kos-kosan via **Google Places API** (dengan fallback OpenStreetMap/Overpass), menyimpannya ke PostgreSQL, dan menampilkannya dalam dashboard interaktif dengan peta.
+Sebuah full-stack web application yang mencari kos-kosan via **Google Places API**, menyimpannya ke PostgreSQL, dan menampilkannya dalam dashboard interaktif dengan peta **Google Maps JavaScript API**.
 
 ![Stack](https://img.shields.io/badge/Frontend-Vue%203%20%2F%20Vite-42b883)
 ![Stack](https://img.shields.io/badge/Backend-FastAPI-009688)
 ![Stack](https://img.shields.io/badge/Database-PostgreSQL-336791)
-![Stack](https://img.shields.io/badge/Data-OpenStreetMap%20%2F%20Overpass-7ebc6f)
+![Stack](https://img.shields.io/badge/Data-Google%20Places%20%2F%20OSM-4285f4)
 
 </div>
 
@@ -39,12 +39,13 @@ Sebuah full-stack web application yang mencari kos-kosan via **Google Places API
 | 🔍 **Scraping Otomatis** | Mengambil data kos-kosan via **Google Places API** (utama) dengan fallback OpenStreetMap |
 | ⭐ **Data Kaya Rating** | Rating, jumlah ulasan, telepon, website, jam buka, & rentang harga dari Google |
 | 📸 **Live Photo Fetch** | Foto kos di-resolve real-time dengan cache ≤ 24 jam (sesuai ToS Google) |
-| 🗺️ **Map View** | Visualisasi lokasi kos-kosan menggunakan Leaflet & OpenStreetMap |
-| 🔎 **Pencarian** | Cari kos berdasarkan nama dengan hasil real-time |
+| 🗺️ **Map View** | Visualisasi lokasi kos-kosan menggunakan Google Maps JavaScript API |
+| 🔎 **Pencarian** | Cari kos berdasarkan nama / alamat / kota / kecamatan dengan hasil real-time |
+| 🏘️ **Filter Kecamatan** | Scrape & filter berdasarkan kota dan kecamatan/kelurahan |
 | ⭐ **Filter Rating** | Filter berdasarkan minimal rating (2+, 3+, 4+, 4.5+) |
 | 📊 **Sorting** | Urutkan berdasarkan terbaru, rating, atau nama |
-| 📄 **Halaman Detail** | Info lengkap: alamat, kontak, jam buka, website, foto, rating |
-| 💾 **Penyimpanan Persisten** | Data tersimpan di PostgreSQL dengan auto-deduplication |
+| 📄 **Halaman Detail** | Info lengkap: alamat, kecamatan, kontak, jam buka, website, foto, rating |
+| 💾 **Penyimpanan Persisten** | Data tersimpan di PostgreSQL dengan auto-deduplication & refresh otomatis saat re-scrape |
 | 📱 **Responsive** | Tampilan adaptif & modern untuk desktop & mobile |
 
 ---
@@ -58,8 +59,8 @@ Sebuah full-stack web application yang mencari kos-kosan via **Google Places API
 │  ┌────────────────┐  │  REST   │  ┌───────────────────────┐  │
 │  │ Dashboard      │  │  API    │  │ Scraper Module        │  │
 │  │  - Peta        │  │         │  │  - Google Places  🥇   │  │
-│  │  - Filter      │  ◄───────  │  │  - OSM Overpass    🥈  │  │
-│  │  - Detail      │  │         │  │  - Mock            🥉  │  │
+│  │  - Filter      │  ◄───────  │  │  - Geocode Fallback 🥈 │  │
+│  │  - Detail      │  │         │  │  - OSM / Nominatim     │  │
 │  └────────────────┘  │         │  └──────────┬────────────┘  │
 │        Vite:5173     │         │             │               │
 │                      │         │  ┌──────────▼────────────┐  │
@@ -72,15 +73,15 @@ Sebuah full-stack web application yang mencari kos-kosan via **Google Places API
 
 ### Alur Kerja
 
-1. User membuka dashboard dan memilih **kota**
+1. User membuka dashboard dan memilih **kota** (opsional: kecamatan/kelurahan)
 2. Frontend mengirim request `POST /api/scrape` ke backend
-3. Backend mencari kos-kosan via **Google Places API** (Text Search, dengan bias lokasi hasil geocode Nominatim)
-4. Data dinormalisasi, di-deduplicate (berbasis `place_id`), lalu disimpan ke **PostgreSQL**
+3. Backend mencari kos-kosan via **Google Places API** (Text Search, bias lokasi dari geocode: Google Geocoding → Nominatim → tabel kota umum)
+4. Data dinormalisasi & di-deduplicate (berbasis `place_id`); jika data sudah ada, field-nya di-**refresh**; jika baru, di-insert ke **PostgreSQL**
 5. Opsional: saat request `GET /api/kos/{id}`, detail Google (rating, ulasan, foto) di-**live-fetch** dengan cache ≤ 24 jam
 6. Frontend menampilkan hasil sebagai **kartu** dan **marker di peta**
 7. User dapat klik kartu untuk melihat **detail lengkap** kos-kosan
 
-> 🥈 Jika Google Places gagal / quota habis / key belum diisi → fallback otomatis ke **OpenStreetMap** (Overpass + Nominatim), lalu **mock data** jika semua gagal.
+> 🌐 Sumber data kos **murni Google Places**. Geocode lokasi memakai rantai fallback **Google Geocoding → Nominatim (OpenStreetMap) → tabel kota umum** — sehingga scrape tetap berjalan walau billing Google nonaktif.
 
 ---
 
@@ -96,7 +97,7 @@ kosin/
 │   │   ├── models.py                # ORM model tabel `kos`
 │   │   ├── schemas.py               # Pydantic schemas (request/response)
 │   │   ├── places.py                # Google Places client (Text Search, Details, Photos, cache 24 jam)
-│   │   ├── scraper.py               # Scraper engine (Google Places → OSM Overpass → mock)
+│   │   ├── scraper.py               # Scraper engine (Google Places + geocode fallback Nominatim)
 │   │   └── routers/
 │   │       ├── __init__.py
 │   │       ├── scraper.py           # POST /api/scrape
@@ -116,7 +117,7 @@ kosin/
 │       ├── components/
 │       │   ├── FilterBar.vue        # Form scrape + filter/sort
 │       │   ├── KosCard.vue          # Kartu ringkasan kos
-│       │   └── MapView.vue          # Peta Leaflet dengan markers
+│       │   └── MapView.vue          # Peta Google Maps dengan markers
 │       └── views/
 │           ├── Dashboard.vue        # Halaman utama (list + map)
 │           └── DetailKos.vue        # Detail lengkap kos-kosan
@@ -135,7 +136,7 @@ kosin/
 | [FastAPI](https://fastapi.tiangolo.com/) | 0.115 | Web framework async |
 | [SQLAlchemy](https://www.sqlalchemy.org/) | 2.0 | ORM database |
 | [asyncpg](https://magicstack.github.io/asyncpg/) | 0.30 | PostgreSQL driver async |
-| [httpx](https://www.python-httpx.org/) | 0.28 | HTTP client (Overpass & Nominatim) |
+| [httpx](https://www.python-httpx.org/) | 0.28 | HTTP client (Google Places, Geocoding & Nominatim) |
 | [Pydantic](https://docs.pydantic.dev/) | 2.10 | Validasi & serialisasi data |
 | [uvicorn](https://www.uvicorn.org/) | 0.34 | ASGI server |
 
@@ -145,7 +146,7 @@ kosin/
 | [Vue 3](https://vuejs.org/) | 3.5 | JavaScript framework |
 | [Vite](https://vite.dev/) | 6.0 | Build tool & dev server |
 | [Axios](https://axios-http.com/) | 1.7 | HTTP client |
-| [Leaflet](https://leafletjs.com/) | 1.9 | Map library (OpenStreetMap) |
+| [Google Maps JS API](https://developers.google.com/maps/documentation/javascript) | — | Map library (via `@googlemaps/js-api-loader`) |
 
 ### Database
 | Teknologi | Versi |
@@ -155,11 +156,11 @@ kosin/
 ### Sumber Data
 | Teknologi | Fungsi |
 |-----------|--------|
-| [Google Places API (New)](https://developers.google.com/maps/documentation/places/web-service/overview) | **Sumber utama**: Text Search, Place Details, Place Photos — rating, ulasan, foto, telepon |
-| [Overpass API](https://overpass-api.de/) | Fallback: data kos-kosan (tag `tourism=guest_house`, `tourism=apartment`, `building=apartments`) |
-| [Nominatim](https://nominatim.openstreetmap.org/) | Geocode nama kota menjadi bounding box (untuk bias lokasi & fallback OSM) |
+| [Google Places API (New)](https://developers.google.com/maps/documentation/places/web-service/overview) | **Sumber data utama**: Text Search, Place Details, Place Photos — rating, ulasan, foto, telepon |
+| [Google Geocoding API](https://developers.google.com/maps/documentation/geocoding) | Geocode nama kota/kecamatan menjadi koordinat & bounding box |
+| [Nominatim](https://nominatim.openstreetmap.org/) | Fallback geocode saat Google Geocoding tidak tersedia (billing nonaktif / offline) |
 
-> Data © OpenStreetMap contributors (lisensi [ODbL](https://www.openstreetmap.org/copyright)) & Google Maps — atribusi sudah ditampilkan di footer aplikasi.
+> Data kos © Google Maps; geocode fallback © OpenStreetMap contributors (lisensi [ODbL](https://www.openstreetmap.org/copyright)) — atribusi sudah ditampilkan di footer aplikasi.
 
 ---
 
@@ -241,14 +242,24 @@ cp .env.example .env
 | Variable | Deskripsi | Contoh |
 |----------|-----------|--------|
 | `DATABASE_URL` | Koneksi PostgreSQL | `postgresql+asyncpg://postgres:admin@localhost:5432/kos_finder` |
-| `GOOGLE_MAPS_API_KEY` | API key Google Places (server-side only!) | `AIza...` |
-| `OVERPASS_API_URL` | Endpoint Overpass API (opsional, ada fallback mirror) | `https://overpass-api.de/api/interpreter` |
+| `GOOGLE_MAPS_API_KEY` | API key Google Places & Geocoding (server-side only!) | `AIza...` |
 
-> ⚠️ **Keamanan key Google**: key hanya dipakai di backend (server-side), **jangan pernah** diekspos ke browser. Restrict key by IP di Google Cloud Console sebelum produksi. Tanpa key (atau quota habis) scraper otomatis fallback ke OSM + mock.
+### Frontend Environment (`frontend/.env`)
+
+```bash
+cd frontend
+cp .env.example .env
+```
+
+| Variable | Deskripsi |
+|----------|-----------|
+| `VITE_GOOGLE_MAPS_KEY` | API key Google Maps JavaScript API (browser) — restrict **by HTTP referrer** |
+
+> ⚠️ **Keamanan key Google**: key Places/Geocoding hanya dipakai di backend (server-side), **jangan pernah** diekspos ke browser. Key Maps (browser) dipakai frontend — restrict by referrer `http://localhost:5173` + domain produksi.
 >
 > 📸 **Foto**: endpoint Place Photos memerlukan billing aktif. Selama billing nonaktif, data rating/ulasan tetap berfungsi, hanya foto kosong.
-
-> ⚠️ **Jika Overpass/Nominatim tidak bisa diakses** (offline / rate-limited) **dan** Google Places gagal, scraper berjalan dalam **mock mode** dan mengembalikan 3 data dummy agar pengembangan tetap berjalan.
+>
+> 🌐 **Geocode**: bila Google Geocoding tidak tersedia (billing nonaktif / key invalid), scraper otomatis fallback ke **Nominatim (OSM)** lalu **tabel kota umum** — scraping tetap jalan tanpa billing.
 
 ---
 
@@ -280,11 +291,11 @@ Vite meng-proxy request `/api/*` ke backend `localhost:8000`, jadi tidak perlu k
 ### Cara Pakai
 
 1. Buka `http://localhost:5173`
-2. Masukkan **kota** (contoh: Bandung, Jakarta, Surabaya)
+2. Masukkan **kota** (contoh: Bandung, Jakarta, Surabaya) — opsional **kecamatan/kelurahan**
 3. Klik tombol **Scrape**
 4. Hasil kos-kosan muncul sebagai kartu + marker di peta
 5. Klik kartu untuk melihat **detail lengkap**
-6. Gunakan **filter** untuk mencari, filter rating, dan sorting
+6. Gunakan **filter** untuk mencari, filter rating, filter kecamatan, dan sorting
 
 ---
 
@@ -314,12 +325,16 @@ POST /api/scrape
 | Field | Tipe | Deskripsi | Wajib |
 |-------|------|-----------|-------|
 | `city` | string | Nama kota target | ✅ |
-| `keyword` | string | Keyword pencarian (diabaikan pada data OSM) | ❌ |
+| `keyword` | string | Keyword pencarian (contoh: "kos kosan murah") | ❌ |
+| `district` | string | Kecamatan/kelurahan target (contoh: "Kec. Coblong") | ❌ |
+| `lat`, `lng` | number | Koordinat pusat (alternatif geocode) | ❌ |
+| `radius_km` | number | Radius pencarian dalam km (default: 12) | ❌ |
 
 **Contoh:**
 ```json
 {
   "city": "Bandung",
+  "district": "Coblong",
   "keyword": "kos kosan murah"
 }
 ```
@@ -331,6 +346,8 @@ POST /api/scrape
   "total_scraped": 25
 }
 ```
+
+> 💡 `total_scraped` = jumlah baris **baru** yang diinsert. Data yang sudah ada (match `place_id`) otomatis di-**refresh** field-nya, tidak dihitung sebagai baris baru.
 
 ---
 
@@ -345,7 +362,8 @@ GET /api/kos
 | Parameter | Tipe | Deskripsi |
 |-----------|------|-----------|
 | `city` | string | Filter berdasarkan kota (partial match) |
-| `search` | string | Cari berdasarkan nama (partial match) |
+| `district` | string | Filter berdasarkan kecamatan/kelurahan (partial match) |
+| `search` | string | Cari berdasarkan nama / alamat / kota / kecamatan (partial match) |
 | `min_rating` | number | Filter rating minimum |
 | `sort` | string | `created_at`, `rating`, atau `name` (default: `created_at`) |
 | `order` | string | `asc` atau `desc` (default: `desc`) |
@@ -366,8 +384,9 @@ GET /api/kos?city=Bandung&min_rating=4&sort=rating&order=desc&limit=20
       "name": "Kos Anggrek Putih",
       "place_id": "ChIJxxxx",
       "source": "gmaps",
-      "address": "Jl. Sudirman No. 5, Bandung",
+      "address": "Jl. Sudirman No. 5, Kec. Coblong, Bandung",
       "city": "Bandung",
+      "district": "Kec. Coblong",
       "latitude": -6.9075,
       "longitude": 107.6091,
       "rating": 4.8,
@@ -428,7 +447,8 @@ DELETE /api/kos/{id}
 | `source` | `VARCHAR(20)` | Sumber data: `gmaps` / `osm` |
 | `name` | `VARCHAR(255)` | Nama kos-kosan |
 | `address` | `TEXT` | Alamat lengkap |
-| `city` | `VARCHAR(100)` | Kota lokasi |
+| `city` | `VARCHAR(100)` | Kota lokasi (hasil ekstraksi dari alamat) |
+| `district` | `VARCHAR(100)` | Kecamatan/kelurahan (hasil ekstraksi dari alamat) |
 | `latitude` | `FLOAT` | Koordinat latitude |
 | `longitude` | `FLOAT` | Koordinat longitude |
 | `rating` | `FLOAT` | Rating Google Maps (1-5) |
@@ -447,16 +467,21 @@ DELETE /api/kos/{id}
 
 ### ✅ Selesai
 
-- [x] Scraping data kos-kosan (Google Places utama + OSM Overpass fallback + mock)
+- [x] Scraping data kos-kosan murni Google Places (geocode fallback Nominatim)
 - [x] Integrasi Google Places API (Text Search, Place Details, Place Photos, cache ≤ 24 jam)
 - [x] Kolom `place_id` & `source`, dedup berbasis `place_id`
-- [x] Dashboard dengan map view (Leaflet/OSM), filter rating & sorting
+- [x] Dashboard dengan map view (Google Maps), filter rating & sorting
 - [x] Halaman detail kos-kosan dengan live-fetch data Google
 - [x] UI modern & responsif (skeleton loading, toast, badges sumber data)
+- [x] Filter kota & kecamatan (scrape + list), kolom `district` di database
+- [x] Refresh data otomatis saat re-scrape (update field yang sudah ada, bukan skip)
+- [x] Ekstraksi kota/kecamatan dari alamat (anti-pencemaran oleh token jalan)
+- [x] Geocode fallback Nominatim + tabel kota umum saat billing Google nonaktif
 
 ### 🔜 Berikutnya
 
 - [ ] Aktifkan billing untuk Place Photos (foto saat ini kosong saat billing nonaktif)
+- [ ] Pagination / multi-halaman Google Places (saat ini hanya halaman pertama hasil pencarian)
 - [ ] Fitur promosi kos berbayar (featured) + form klaim owner + verifikasi admin
 - [ ] Harga kos-kosan spesifik (per bulan)
 - [ ] Autentikasi user
@@ -474,8 +499,8 @@ DELETE /api/kos/{id}
 - [x] Aktifkan Places API (New) + API key server-side
 - [x] Client `places.py` (searchText, place details, photo media) dengan cache ≤ 24 jam
 - [x] Kolom `place_id` & `source` di tabel `kos`, dedup berbasis `place_id`
+- [x] Ganti peta Leaflet → Google Maps JavaScript API
 - [ ] Aktifkan billing & buat API key production restrict by IP
-- [ ] Ganti peta Leaflet → Google Maps JavaScript API
 - [ ] Evaluasi Local Lists Terms Google sebelum monetisasi skala besar
 
 ---
