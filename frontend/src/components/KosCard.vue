@@ -1,9 +1,9 @@
 <template>
   <div class="kos-card" @click="$emit('click')">
     <div class="card-top">
-      <span class="source-badge" :class="`source-${kos.source || 'osm'}`">
+      <span class="source-badge source-gmaps">
         <span class="badge-dot"></span>
-        {{ (kos.source || 'osm') === 'gmaps' ? 'Google' : 'OSM' }}
+        Google
       </span>
       <span v-if="kos.rating" class="rating-badge">
         <span class="star">★</span>

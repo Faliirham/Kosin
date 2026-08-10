@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.13",
+    "@googlemaps/js-api-loader": "^2.1.1",
     "axios": "^1.7.9",
-    "leaflet": "^1.9.4"
+    "vue": "^3.5.13"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",

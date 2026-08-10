@@ -21,7 +21,7 @@
         <button class="btn btn-primary" @click="emitScrape" :disabled="loading || !city">
           <span v-if="loading" class="spinner"></span>
           <span v-else>🔍</span>
-          <span>{{ loading ? 'Mencari...' : 'Scrape' }}</span>
+          <span>{{ loading ? 'Mencari...' : 'Cari' }}</span>
         </button>
       </div>
     </div>
@@ -36,10 +36,16 @@
           <span class="search-icon">⌕</span>
           <input
             v-model="search"
-            placeholder="Cari nama kos..."
+            placeholder="Cari nama, kota, atau kecamatan..."
             @input="emitFilter"
           />
         </div>
+        <input
+          v-model="filterCity"
+          class="input input-city"
+          placeholder="Kota / Kecamatan"
+          @input="emitFilter"
+        />
         <select v-model="minRating" class="select" @change="emitFilter" title="Rating minimal">
           <option value="">Semua rating</option>
           <option value="2">2★ ke atas</option>
@@ -74,10 +80,11 @@ const emit = defineEmits(['scrape', 'filter'])
 const city = ref('')
 const keyword = ref('kos kosan')
 const search = ref('')
+const filterCity = ref('')
 const minRating = ref('')
 const sort = ref('created_at')
 
-const hasActiveFilter = computed(() => !!(search.value || minRating.value || sort.value !== 'created_at'))
+const hasActiveFilter = computed(() => !!(search.value || filterCity.value || minRating.value || sort.value !== 'created_at'))
 
 function emitScrape() {
   emit('scrape', { city: city.value, keyword: keyword.value })
@@ -86,6 +93,7 @@ function emitScrape() {
 function emitFilter() {
   emit('filter', {
     search: search.value || undefined,
+    city: filterCity.value || undefined,
     min_rating: minRating.value ? Number(minRating.value) : undefined,
     sort: sort.value,
   })
@@ -93,6 +101,7 @@ function emitFilter() {
 
 function resetFilters() {
   search.value = ''
+  filterCity.value = ''
   minRating.value = ''
   sort.value = 'created_at'
   emitFilter()
@@ -164,6 +173,11 @@ function resetFilters() {
 
 .input-keyword {
   flex: 1.5;
+  min-width: 140px;
+}
+
+.input-city {
+  flex: 1;
   min-width: 140px;
 }
 

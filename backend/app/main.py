@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
         await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS place_id VARCHAR(255)"))
         await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS source VARCHAR(20)"))
-        await conn.execute(text("UPDATE kos SET source = 'osm' WHERE source IS NULL"))
+        await conn.execute(text("DELETE FROM kos WHERE source IS NULL OR source != 'gmaps'"))
     yield
     await engine.dispose()
 

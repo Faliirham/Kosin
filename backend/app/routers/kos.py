@@ -1,8 +1,9 @@
 from uuid import UUID
+import logging
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete
+from sqlalchemy import select, func, delete, or_
 
 from app import places
 from app.database import get_db
@@ -10,6 +11,8 @@ from app.models import Kos
 from app.schemas import KosResponse, PaginatedKos
 
 router = APIRouter(prefix="/api/kos", tags=["Kos"])
+
+logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=PaginatedKos)
@@ -28,7 +31,10 @@ async def list_kos(
     if city:
         query = query.where(Kos.city.ilike(f"%{city}%"))
     if search:
-        query = query.where(Kos.name.ilike(f"%{search}%"))
+        pattern = f"%{search}%"
+        query = query.where(
+            or_(Kos.name.ilike(pattern), Kos.address.ilike(pattern), Kos.city.ilike(pattern))
+        )
     if min_rating is not None:
         query = query.where(Kos.rating >= min_rating)
 
@@ -80,10 +86,7 @@ async def _enrich_gmaps(kos: Kos) -> Kos:
                 if value is not None:
                     setattr(kos, field, value)
     except (httpx.HTTPError, RuntimeError) as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Gagal mengambil detail dari Google Places: {e}",
-        )
+        logger.warning("Gagal enrich detail Google untuk %s: %s", kos.id, e)
     return kos
 
 

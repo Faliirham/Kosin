@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+import httpx
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -23,7 +24,16 @@ async def _exists(db: AsyncSession, kos_data) -> bool:
 
 @router.post("/scrape", response_model=ScrapeResponse)
 async def trigger_scrape(req: ScrapeRequest, db: AsyncSession = Depends(get_db)):
-    results = await scrape_kos(city=req.city, keyword=req.keyword)
+    try:
+        results = await scrape_kos(
+            city=req.city,
+            keyword=req.keyword,
+            lat=req.lat,
+            lng=req.lng,
+            radius_km=req.radius_km,
+        )
+    except (RuntimeError, httpx.HTTPError) as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
     new_count = 0
     for kos_data in results:

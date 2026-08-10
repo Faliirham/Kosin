@@ -111,11 +111,24 @@ def _normalize_place(place: dict) -> dict:
     }
 
 
-async def search_places(client: httpx.AsyncClient, city: str, keyword: str) -> list[dict]:
-    """Text Search (New) dengan pagination & cache per (city, keyword)."""
+def _bounds_key(bounds: dict | None) -> str:
+    if not bounds:
+        return "all"
+    return "{:.5f},{:.5f},{:.5f},{:.5f}".format(
+        bounds.get("south", 0), bounds.get("west", 0), bounds.get("north", 0), bounds.get("east", 0)
+    )
+
+
+async def search_places(
+    client: httpx.AsyncClient,
+    city: str,
+    keyword: str,
+    bounds: dict | None = None,
+) -> list[dict]:
+    """Text Search (New) dengan pagination, cache, dan locationRestriction."""
     _raise_if_unavailable()
 
-    cache_key = f"search:{city.lower()}:{keyword.lower()}"
+    cache_key = f"search:{city.lower()}:{keyword.lower()}:{_bounds_key(bounds)}"
     cached = cache.get(cache_key)
     if cached is not None:
         logger.info("Cache hit search %s", cache_key)
@@ -130,6 +143,13 @@ async def search_places(client: httpx.AsyncClient, city: str, keyword: str) -> l
         "regionCode": "ID",
         "maxResultCount": 20,
     }
+    if bounds:
+        body["locationRestriction"] = {
+            "rectangle": {
+                "low": {"latitude": bounds["south"], "longitude": bounds["west"]},
+                "high": {"latitude": bounds["north"], "longitude": bounds["east"]},
+            }
+        }
 
     for _ in range(3):  # max ~60 hasil
         if page_token:

@@ -4,8 +4,8 @@
 
     <div v-if="!loading && !error && kosList.length" class="stats-row">
       <div class="stat stat-total">
-        <span class="stat-num">{{ kosList.length }}</span>
-        <span class="stat-label">kos tampil</span>
+        <span class="stat-num">{{ total }}</span>
+        <span class="stat-label">kos tersedia</span>
       </div>
       <div class="stat stat-gmaps">
         <span class="stat-num">{{ sourceCounts.gmaps }}</span>
@@ -41,6 +41,10 @@
           :kos="kos"
           @click="$emit('view-detail', kos.id)"
         />
+        <button v-if="total > kosList.length" class="btn-load-more" @click="loadMore">
+          <span v-if="loading" class="spinner-sm"></span>
+          <span>{{ loading ? 'Memuat...' : `Muat lebih banyak (${kosList.length}/${total})` }}</span>
+        </button>
       </div>
       <div class="map-container">
         <MapView :markers="kosList" />
@@ -50,7 +54,7 @@
     <div v-else class="state-card state-empty">
       <span class="state-icon">🏠</span>
       <h3>Belum ada data kos</h3>
-      <p>Masukkan nama kota lalu klik <strong>Scrape</strong> untuk mencari kos-kosan terdekat dari Google Maps &amp; OpenStreetMap.</p>
+      <p>Masukkan nama kota lalu klik <strong>Cari</strong> untuk mencari kos-kosan terdekat dari Google Maps.</p>
     </div>
   </div>
 </template>
@@ -67,6 +71,11 @@ defineEmits(['view-detail'])
 const kosList = ref([])
 const loading = ref(false)
 const error = ref('')
+const filters = ref({})
+const page = ref(0)
+const total = ref(0)
+
+const PAGE_SIZE = 20
 
 const sourceCounts = computed(() => {
   const counts = { gmaps: 0, osm: 0 }
@@ -77,12 +86,18 @@ const sourceCounts = computed(() => {
   return counts
 })
 
-async function loadKos(params = {}) {
+async function loadKos(params = {}, reset = true) {
+  if (reset) page.value = 0
   loading.value = true
   error.value = ''
   try {
-    const res = await fetchKos(params)
-    kosList.value = res.data
+    const res = await fetchKos({ ...params, limit: PAGE_SIZE, offset: page.value * PAGE_SIZE })
+    if (reset) {
+      kosList.value = res.data
+    } else {
+      kosList.value = kosList.value.concat(res.data)
+    }
+    total.value = res.total
   } catch (e) {
     error.value = 'Gagal memuat data: ' + (e.response?.data?.detail || e.message)
   } finally {
@@ -95,7 +110,7 @@ async function handleScrape({ city, keyword }) {
   error.value = ''
   try {
     await triggerScrape(city, keyword)
-    await loadKos()
+    await loadKos(filters.value, true)
   } catch (e) {
     error.value = 'Gagal scrape: ' + (e.response?.data?.detail || e.message)
     loading.value = false
@@ -103,7 +118,13 @@ async function handleScrape({ city, keyword }) {
 }
 
 function handleFilter(params) {
-  loadKos(params)
+  filters.value = { ...params }
+  loadKos(filters.value, true)
+}
+
+function loadMore() {
+  page.value += 1
+  loadKos(filters.value, false)
 }
 
 onMounted(() => loadKos())
@@ -264,6 +285,41 @@ onMounted(() => loadKos())
 .btn-retry:hover {
   background: var(--primary-dark);
   transform: translateY(-1px);
+}
+
+.btn-load-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 16px;
+  border: 1px dashed var(--primary);
+  border-radius: 10px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.btn-load-more:hover {
+  background: #e0e7ff;
+  transform: translateY(-1px);
+}
+
+.spinner-sm {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--primary-light);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 900px) {

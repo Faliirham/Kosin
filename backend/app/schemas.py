@@ -36,6 +36,9 @@ class KosResponse(KosBase):
 class ScrapeRequest(BaseModel):
     city: str
     keyword: str = "kos kosan"
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    radius_km: Optional[float] = None
 
 
 class ScrapeResponse(BaseModel):

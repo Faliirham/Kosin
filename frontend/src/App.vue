@@ -11,9 +11,7 @@
         </button>
         <div class="header-actions">
           <span class="source-pill" v-if="view === 'dashboard'">
-            <span class="dot dot-gmaps"></span> Google
-            <span class="pill-sep">·</span>
-            <span class="dot dot-osm"></span> OSM
+            <span class="dot dot-gmaps"></span> Google Maps
           </span>
         </div>
       </div>
@@ -26,8 +24,7 @@
 
     <footer class="footer">
       <p>
-        Data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
-        &amp; <a href="https://about.google/brand-resource-center/products-and-services/guidelines-google-maps/" target="_blank" rel="noopener">Google Maps</a> contributors
+        Data © <a href="https://about.google/brand-resource-center/products-and-services/guidelines-google-maps/" target="_blank" rel="noopener">Google Maps</a> contributors
       </p>
       <p class="footer-sub">Dibangun dengan FastAPI &amp; Vue 3</p>
     </footer>

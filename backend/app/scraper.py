@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import math
 import os
 import sys
 from pathlib import Path
@@ -17,173 +18,115 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-NOMINATIM_URL = os.getenv("NOMINATIM_URL", "https://nominatim.openstreetmap.org/search")
-OVERPASS_URL = os.getenv("OVERPASS_API_URL", "https://overpass-api.de/api/interpreter")
-OVERPASS_MIRRORS = [
-    "https://overpass.kumi.systems/api/interpreter",
-    "https://overpass.osm.ch/api/interpreter",
-]
-USER_AGENT = "KosFinder/1.0 (kos-kosan search demo; contact: localhost)"
+GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
+DEFAULT_RADIUS_KM = 12.0
+EARTH_RADIUS_KM = 6371.0
 
-# Tag kombinasi yang mendekati "kos-kosan" di OSM
-OVERPASS_TAGS = [
-    'nwr["tourism"="guest_house"]',
-    'nwr["tourism"="apartment"]',
-    'nwr["building"="apartments"]',
-]
-
-OVERPASS_QUERY_TEMPLATE = """[out:json][timeout:45];
-(
-{queries}
-);
-out center tags {limit};
-"""
-
-
-def _query_bbox(south: float, west: float, north: float, east: float, limit: int = 300) -> str:
-    bbox = f"({south},{west},{north},{east})"
-    queries = "\n".join(f"  {tag}{bbox};" for tag in OVERPASS_TAGS)
-    return OVERPASS_QUERY_TEMPLATE.format(queries=queries, limit=limit)
+# Fallback koordinat kota umum (dipakai saat Google Geocoding belum aktif/billing off)
+CITY_FALLBACK = {
+    "bandung": {"lat": -6.9175, "lng": 107.6191},
+    "jakarta": {"lat": -6.2088, "lng": 106.8456},
+    "surabaya": {"lat": -7.2575, "lng": 112.7521},
+    "yogyakarta": {"lat": -7.7956, "lng": 110.3695},
+    "semarang": {"lat": -6.9932, "lng": 110.4203},
+    "medan": {"lat": 3.5952, "lng": 98.6722},
+    "makassar": {"lat": -5.1477, "lng": 119.4327},
+    "depok": {"lat": -6.4025, "lng": 106.7942},
+    "tangerang": {"lat": -6.1783, "lng": 106.6319},
+    "bekasi": {"lat": -6.2383, "lng": 106.9756},
+    "bogor": {"lat": -6.5971, "lng": 106.806},
+    "malang": {"lat": -7.9666, "lng": 112.6326},
+    "denpasar": {"lat": -8.6705, "lng": 115.2126},
+    "palembang": {"lat": -2.9761, "lng": 104.7754},
+    "bandar lampung": {"lat": -5.3971, "lng": 105.2668},
+}
 
 
-async def _geocode_city(client: httpx.AsyncClient, city: str) -> dict | None:
-    resp = await client.get(
-        NOMINATIM_URL,
-        params={
-            "q": city,
-            "format": "json",
-            "limit": 1,
-            "countrycodes": "id",
-            "accept-language": "id",
-        },
-        headers={"User-Agent": USER_AGENT},
-    )
-    resp.raise_for_status()
-    results = resp.json()
-    if not results:
-        return None
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lng2 - lng1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return EARTH_RADIUS_KM * 2 * math.asin(math.sqrt(a))
 
-    result = results[0]
-    south, north, west, east = (float(v) for v in result["boundingbox"])
+
+def _bounds_around(center: dict, radius_km: float) -> dict:
+    """Perkiraan bounding box persegi di sekitar pusat kota."""
+    lat_d = radius_km / 111.0
+    lng_d = radius_km / (111.0 * max(0.2, math.cos(math.radians(center["lat"]))))
     return {
-        "display_name": result.get("display_name", city),
-        "lat": float(result.get("lat", 0)),
-        "lon": float(result.get("lon", 0)),
-        "bbox": {"south": south, "west": west, "north": north, "east": east},
+        "south": center["lat"] - lat_d,
+        "north": center["lat"] + lat_d,
+        "west": center["lng"] - lng_d,
+        "east": center["lng"] + lng_d,
     }
 
 
-async def _query_overpass(client: httpx.AsyncClient, query: str) -> list[dict]:
-    last_error = None
-    endpoints = [OVERPASS_URL, *OVERPASS_MIRRORS]
-    for url in endpoints:
-        try:
-            resp = await client.post(
-                url,
-                data={"data": query},
-                headers={"User-Agent": USER_AGENT},
-                timeout=60,
-            )
-            resp.raise_for_status()
-            return resp.json().get("elements", [])
-        except (httpx.HTTPError, ValueError) as e:
-            last_error = e
-            logger.warning("Overpass endpoint %s gagal: %s", url, e)
-            await asyncio.sleep(2)
-    raise RuntimeError(f"Semua endpoint Overpass gagal: {last_error}")
-
-
-def _osm_element_to_kos(el: dict, city: str) -> KosCreate | None:
-    tags = el.get("tags", {})
-    name = tags.get("name", "")
-    if not name:
-        return None
-
-    lat = el.get("lat")
-    lon = el.get("lon")
-    if lat is None or lon is None:
-        center = el.get("center", {})
-        lat = center.get("lat")
-        lon = center.get("lon")
-
-    street = tags.get("addr:street")
-    housenumber = tags.get("addr:housenumber")
-    address = " ".join(part for part in [housenumber, street] if part)
+def _extract_city(address: str | None, fallback: str) -> str:
+    """Ekstrak kota/kecamatan sebenarnya dari formattedAddress Google."""
     if not address:
-        address = tags.get("addr:full")
+        return fallback
+    parts = [p.strip() for p in address.split(",")]
+    for marker in ("Kota ", "Kabupaten ", "Kecamatan ", "Kec. "):
+        for part in parts:
+            if part.startswith(marker):
+                return part
+    return fallback
 
-    phone = tags.get("contact:phone") or tags.get("phone")
-    website = tags.get("contact:website") or tags.get("website")
-    opening_hours = [tags["opening_hours"]] if tags.get("opening_hours") else None
 
-    osm_url = None
-    if lat is not None and lon is not None:
-        osm_url = f"https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=17/{lat}/{lon}"
-
-    return KosCreate(
-        name=name,
-        source="osm",
-        address=address,
-        city=tags.get("addr:city", city),
-        latitude=lat,
-        longitude=lon,
-        phone=phone,
-        website=website,
-        opening_hours=opening_hours,
-        google_maps_url=osm_url,
+async def _geocode_city(client: httpx.AsyncClient, city: str) -> dict | None:
+    """Geocode kota via Google Geocoding. Fallback ke tabel kota umum jika billing off."""
+    resp = await client.get(
+        GEOCODE_URL,
+        params={"address": f"{city}, Indonesia", "key": places.API_KEY, "region": "id"},
+        timeout=30,
     )
+    resp.raise_for_status()
+    data = resp.json()
+    status = data.get("status")
 
+    if status != "OK":
+        if status in ("REQUEST_DENIED", "OVER_QUERY_LIMIT"):
+            logger.warning(
+                "Google Geocoding %s (%s), fallback koordinat kota umum",
+                status,
+                data.get("error_message", ""),
+            )
+            entry = CITY_FALLBACK.get(city.strip().lower())
+            if entry:
+                center = {"lat": entry["lat"], "lng": entry["lng"]}
+                return {"center": center, "bounds": _bounds_around(center, DEFAULT_RADIUS_KM)}
+        raise RuntimeError(
+            f"Google Geocoding gagal ({status}): {data.get('error_message', '')}. "
+            "Aktifkan Billing & Google Geocoding API di Google Cloud Console, "
+            "atau berikan lat/lng secara manual."
+        )
 
-def _mock_data(city: str) -> list[KosCreate]:
-    return [
-        KosCreate(
-            name=f"Kos Melati {city}",
-            address=f"Jl. Merdeka No. 10, {city}",
-            city=city,
-            latitude=-6.9175,
-            longitude=107.6191,
-            rating=4.5,
-            total_reviews=23,
-            phone="0812-3456-7890",
-            price_range="Sedang",
-            google_maps_url="https://www.openstreetmap.org/?mlat=-6.9175&mlon=107.6191#map=17/-6.9175/107.6191",
-        ),
-        KosCreate(
-            name=f"Kos Mawar Indah {city}",
-            address=f"Jl. Diponegoro No. 25, {city}",
-            city=city,
-            latitude=-6.9275,
-            longitude=107.6291,
-            rating=4.2,
-            total_reviews=15,
-            phone="0813-9876-5432",
-            price_range="Murah",
-            google_maps_url="https://www.openstreetmap.org/?mlat=-6.9275&mlon=107.6291#map=17/-6.9275/107.6291",
-        ),
-        KosCreate(
-            name=f"Kos Anggrek Putih {city}",
-            address=f"Jl. Sudirman No. 5, {city}",
-            city=city,
-            latitude=-6.9075,
-            longitude=107.6091,
-            rating=4.8,
-            total_reviews=42,
-            phone="0821-1111-2222",
-            website="https://kosanggrek.example.com",
-            price_range="Mahal",
-            google_maps_url="https://www.openstreetmap.org/?mlat=-6.9075&mlon=107.6091#map=17/-6.9075/107.6091",
-        ),
-    ]
+    result = data["results"][0]
+    geometry = result.get("geometry", {})
+    location = geometry.get("location", {})
+    viewport = geometry.get("viewport", {})
+    center = {"lat": location.get("lat", 0), "lng": location.get("lng", 0)}
+    ne = viewport.get("northeast", {})
+    sw = viewport.get("southwest", {})
+    bounds = {
+        "north": ne.get("lat", center["lat"]),
+        "east": ne.get("lng", center["lng"]),
+        "south": sw.get("lat", center["lat"]),
+        "west": sw.get("lng", center["lng"]),
+    }
+    return {"center": center, "bounds": bounds}
 
 
 def _place_to_kos(place: dict, city: str) -> KosCreate:
     """Normalisasi hasil Google Places (search/details) -> KosCreate."""
+    address = place.get("address")
     return KosCreate(
         name=place.get("name") or "Tanpa Nama",
         place_id=place.get("place_id"),
         source="gmaps",
-        address=place.get("address"),
-        city=city,
+        address=address,
+        city=_extract_city(address, city),
         latitude=place.get("latitude"),
         longitude=place.get("longitude"),
         rating=place.get("rating"),
@@ -197,63 +140,50 @@ def _place_to_kos(place: dict, city: str) -> KosCreate:
     )
 
 
-async def _scrape_gmaps(city: str, keyword: str) -> list[KosCreate] | None:
-    """Scrape via Google Places API. Return None jika tidak tersedia/gagal."""
-    if not places.API_KEY or places.API_KEY == "your_api_key_here":
-        return None
+async def scrape_kos(
+    city: str,
+    keyword: str = "kos kosan",
+    lat: float | None = None,
+    lng: float | None = None,
+    radius_km: float | None = None,
+) -> list[KosCreate]:
+    """Scrape kos-kosan murni via Google Places API dengan pembatas lokasi kota."""
+    radius = radius_km or DEFAULT_RADIUS_KM
 
-    try:
-        async with httpx.AsyncClient() as client:
-            found = await places.search_places(client, city, keyword)
-            if not found:
-                logger.warning("Google Places tidak menemukan hasil untuk %s", city)
-                return None
-            return [_place_to_kos(p, city) for p in found]
-    except (httpx.HTTPError, RuntimeError) as e:
-        logger.error("Google Places gagal (%s), fallback OSM: %s", city, e)
-        return None
-
-
-async def _scrape_osm(city: str) -> list[KosCreate]:
-    """Scrape via OpenStreetMap (Nominatim + Overpass), fallback mock."""
-    try:
-        async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient() as client:
+        if lat is not None and lng is not None:
+            center = {"lat": lat, "lng": lng}
+            bounds = _bounds_around(center, radius)
+        else:
             geo = await _geocode_city(client, city)
             if not geo:
-                logger.warning("Kota '%s' tidak ditemukan di Nominatim, fallback mock", city)
-                return _mock_data(city)
+                return []
+            center = geo["center"]
+            bounds = geo["bounds"]
 
-            query = _query_bbox(**geo["bbox"])
-            elements = await _query_overpass(client, query)
+        found = await places.search_places(client, city, keyword, bounds=bounds)
+        if not found:
+            logger.warning("Google Places tidak menemukan hasil untuk %s", city)
+            return []
 
-            results = []
-            seen = set()
-            for el in elements:
-                kos = _osm_element_to_kos(el, city)
-                if not kos:
-                    continue
-                key = (kos.name.lower(), (kos.address or "").lower())
-                if key in seen:
-                    continue
-                seen.add(key)
-                results.append(kos)
+        results = [_place_to_kos(p, city) for p in found]
+        filtered = []
+        dropped = 0
+        for kos in results:
+            if (
+                kos.latitude is not None
+                and kos.longitude is not None
+                and _haversine_km(kos.latitude, kos.longitude, center["lat"], center["lng"]) > radius
+            ):
+                dropped += 1
+                continue
+            filtered.append(kos)
 
-            if not results:
-                logger.warning("Tidak ada kos ditemukan untuk %s, fallback mock", city)
-                return _mock_data(city)
-            return results
-    except (httpx.HTTPError, RuntimeError) as e:
-        logger.error("Scraper OSM gagal (%s), fallback mock: %s", city, e)
-        return _mock_data(city)
+        if dropped:
+            logger.info("Dropped %d hasil di luar radius %s km dari %s", dropped, radius, city)
 
-
-async def scrape_kos(city: str, keyword: str = "kos kosan") -> list[KosCreate]:
-    """Scrape kos-kosan: Google Places utama -> OSM -> mock."""
-    gmaps = await _scrape_gmaps(city, keyword)
-    if gmaps:
-        logger.info("Scrape %s via Google Places: %d hasil", city, len(gmaps))
-        return gmaps
-    return await _scrape_osm(city)
+        logger.info("Scrape %s via Google Places: %d hasil (radius %s km)", city, len(filtered), radius)
+        return filtered
 
 
 async def _main() -> None:
