@@ -19,8 +19,8 @@ export async function deleteKos(id) {
   return res.data
 }
 
-export async function triggerScrape(city, keyword = 'kos kosan') {
-  const res = await api.post('/scrape', { city, keyword })
+export async function triggerScrape(city, keyword = 'kos kosan', district) {
+  const res = await api.post('/scrape', { city, keyword, district })
   return res.data
 }
 

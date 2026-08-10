@@ -7,6 +7,7 @@
           {{ (kos.source || 'osm') === 'gmaps' ? 'Google' : 'OpenStreetMap' }}
         </span>
         <span v-if="kos.city" class="chip chip-city">{{ kos.city }}</span>
+        <span v-if="kos.district" class="chip chip-district">{{ kos.district }}</span>
         <span v-if="kos.price_range" class="chip chip-price">{{ kos.price_range }}</span>
       </div>
     </div>
@@ -208,6 +209,11 @@ onMounted(() => loadDetail())
 .chip-city {
   background: var(--primary-light);
   color: var(--primary-dark);
+}
+
+.chip-district {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .chip-price {

@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard">
-    <FilterBar :loading="loading" @scrape="handleScrape" @filter="handleFilter" />
+    <FilterBar :loading="loading" :filters="filters" @scrape="handleScrape" @filter="handleFilter" />
 
     <div v-if="!loading && !error && kosList.length" class="stats-row">
       <div class="stat stat-total">
@@ -105,11 +105,17 @@ async function loadKos(params = {}, reset = true) {
   }
 }
 
-async function handleScrape({ city, keyword }) {
+async function handleScrape({ city, keyword, district }) {
   loading.value = true
   error.value = ''
   try {
-    await triggerScrape(city, keyword)
+    await triggerScrape(city, keyword, district)
+    filters.value = {
+      ...filters.value,
+      city,
+      district: district || undefined,
+      search: undefined,
+    }
     await loadKos(filters.value, true)
   } catch (e) {
     error.value = 'Gagal scrape: ' + (e.response?.data?.detail || e.message)

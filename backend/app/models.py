@@ -18,6 +18,7 @@ class Kos(Base):
     name = Column(String(255), nullable=False)
     address = Column(Text, nullable=True)
     city = Column(String(100), nullable=True)
+    district = Column(String(100), nullable=True, index=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     rating = Column(Float, nullable=True)

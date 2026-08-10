@@ -11,23 +11,13 @@ from app.scraper import scrape_kos
 router = APIRouter(prefix="/api", tags=["Scraper"])
 
 
-async def _exists(db: AsyncSession, kos_data) -> bool:
-    if kos_data.place_id:
-        result = await db.execute(select(Kos).where(Kos.place_id == kos_data.place_id))
-        if result.scalar_one_or_none():
-            return True
-    result = await db.execute(
-        select(Kos).where(Kos.name == kos_data.name, Kos.address == kos_data.address)
-    )
-    return result.scalar_one_or_none() is not None
-
-
 @router.post("/scrape", response_model=ScrapeResponse)
 async def trigger_scrape(req: ScrapeRequest, db: AsyncSession = Depends(get_db)):
     try:
         results = await scrape_kos(
             city=req.city,
             keyword=req.keyword,
+            district=req.district,
             lat=req.lat,
             lng=req.lng,
             radius_km=req.radius_km,
@@ -36,8 +26,26 @@ async def trigger_scrape(req: ScrapeRequest, db: AsyncSession = Depends(get_db))
         raise HTTPException(status_code=502, detail=str(e))
 
     new_count = 0
+    updated_count = 0
     for kos_data in results:
-        if await _exists(db, kos_data):
+        existing = None
+        if kos_data.place_id:
+            result = await db.execute(select(Kos).where(Kos.place_id == kos_data.place_id))
+            existing = result.scalar_one_or_none()
+        if not existing:
+            result = await db.execute(
+                select(Kos).where(Kos.name == kos_data.name, Kos.address == kos_data.address)
+            )
+            existing = result.scalar_one_or_none()
+        if existing:
+            fields = kos_data.model_dump(exclude={"place_id"})
+            changed = False
+            for field, value in fields.items():
+                if value is not None and getattr(existing, field) != value:
+                    setattr(existing, field, value)
+                    changed = True
+            if changed:
+                updated_count += 1
             continue
         db.add(Kos(**kos_data.model_dump()))
         new_count += 1

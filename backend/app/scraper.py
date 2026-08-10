@@ -19,6 +19,8 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+USER_AGENT = "KosFinder/1.0 (kos-kosan search; geocode fallback)"
 DEFAULT_RADIUS_KM = 12.0
 EARTH_RADIUS_KM = 6371.0
 
@@ -63,59 +65,112 @@ def _bounds_around(center: dict, radius_km: float) -> dict:
 
 
 def _extract_city(address: str | None, fallback: str) -> str:
-    """Ekstrak kota/kecamatan sebenarnya dari formattedAddress Google."""
+    """Ekstrak kota sebenarnya dari formattedAddress Google, fallback ke kota yang dicari."""
     if not address:
         return fallback
     parts = [p.strip() for p in address.split(",")]
-    for marker in ("Kota ", "Kabupaten ", "Kecamatan ", "Kec. "):
-        for part in parts:
-            if part.startswith(marker):
+    bad = ("Jl.", "Jln.", "No.", "Gg.", "Gang")
+    for part in parts:
+        for marker in ("Kota ", "Kabupaten "):
+            if part.startswith(marker) and not any(b in part for b in bad):
                 return part
     return fallback
 
 
-async def _geocode_city(client: httpx.AsyncClient, city: str) -> dict | None:
-    """Geocode kota via Google Geocoding. Fallback ke tabel kota umum jika billing off."""
-    resp = await client.get(
-        GEOCODE_URL,
-        params={"address": f"{city}, Indonesia", "key": places.API_KEY, "region": "id"},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    status = data.get("status")
+def _extract_district(address: str | None) -> str | None:
+    """Ekstrak kecamatan/kelurahan dari formattedAddress Google."""
+    if not address:
+        return None
+    parts = [p.strip() for p in address.split(",")]
+    for marker in ("Kecamatan ", "Kec. ", "Kelurahan ", "Kel. "):
+        for part in parts:
+            if part.startswith(marker):
+                return part
+    return None
 
-    if status != "OK":
-        if status in ("REQUEST_DENIED", "OVER_QUERY_LIMIT"):
-            logger.warning(
-                "Google Geocoding %s (%s), fallback koordinat kota umum",
-                status,
-                data.get("error_message", ""),
-            )
-            entry = CITY_FALLBACK.get(city.strip().lower())
-            if entry:
-                center = {"lat": entry["lat"], "lng": entry["lng"]}
-                return {"center": center, "bounds": _bounds_around(center, DEFAULT_RADIUS_KM)}
-        raise RuntimeError(
-            f"Google Geocoding gagal ({status}): {data.get('error_message', '')}. "
-            "Aktifkan Billing & Google Geocoding API di Google Cloud Console, "
-            "atau berikan lat/lng secara manual."
+
+async def _geocode_nominatim(client: httpx.AsyncClient, location: str) -> dict | None:
+    """Geocode lokasi via Nominatim (fallback saat Google Geocoding tidak tersedia)."""
+    try:
+        resp = await client.get(
+            NOMINATIM_URL,
+            params={
+                "q": location,
+                "format": "json",
+                "limit": 1,
+                "countrycodes": "id",
+                "accept-language": "id",
+            },
+            headers={"User-Agent": USER_AGENT},
+            timeout=30,
         )
+        resp.raise_for_status()
+        results = resp.json()
+        if not results:
+            return None
+        result = results[0]
+        south, north, west, east = (float(v) for v in result["boundingbox"])
+        center = {"lat": float(result.get("lat", 0)), "lng": float(result.get("lon", 0))}
+        return {
+            "center": center,
+            "bounds": {"south": south, "north": north, "west": west, "east": east},
+        }
+    except (httpx.HTTPError, ValueError, KeyError, IndexError) as e:
+        logger.warning("Nominatim geocode gagal untuk %s: %s", location, e)
+        return None
 
-    result = data["results"][0]
-    geometry = result.get("geometry", {})
-    location = geometry.get("location", {})
-    viewport = geometry.get("viewport", {})
-    center = {"lat": location.get("lat", 0), "lng": location.get("lng", 0)}
-    ne = viewport.get("northeast", {})
-    sw = viewport.get("southwest", {})
-    bounds = {
-        "north": ne.get("lat", center["lat"]),
-        "east": ne.get("lng", center["lng"]),
-        "south": sw.get("lat", center["lat"]),
-        "west": sw.get("lng", center["lng"]),
-    }
-    return {"center": center, "bounds": bounds}
+
+async def _geocode_city(client: httpx.AsyncClient, location: str) -> dict | None:
+    """Geocode lokasi kota/kecamatan. Rantai: Google Geocoding -> Nominatim -> tabel kota umum."""
+    geo = None
+    try:
+        resp = await client.get(
+            GEOCODE_URL,
+            params={"address": f"{location}, Indonesia", "key": places.API_KEY, "region": "id"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        status = data.get("status")
+        if status == "OK":
+            result = data["results"][0]
+            geometry = result.get("geometry", {})
+            loc = geometry.get("location", {})
+            ne = geometry.get("viewport", {}).get("northeast", {})
+            sw = geometry.get("viewport", {}).get("southwest", {})
+            center = {"lat": loc.get("lat", 0), "lng": loc.get("lng", 0)}
+            geo = {
+                "center": center,
+                "bounds": {
+                    "north": ne.get("lat", center["lat"]),
+                    "east": ne.get("lng", center["lng"]),
+                    "south": sw.get("lat", center["lat"]),
+                    "west": sw.get("lng", center["lng"]),
+                },
+            }
+        else:
+            logger.warning("Google Geocoding %s (%s)", status, data.get("error_message", ""))
+    except (httpx.HTTPError, KeyError, IndexError, ValueError) as e:
+        logger.warning("Google Geocoding gagal untuk %s: %s", location, e)
+
+    if geo is not None:
+        return geo
+
+    nominatim = await _geocode_nominatim(client, location)
+    if nominatim is not None:
+        logger.info("Geocode %s via Nominatim (fallback)", location)
+        return nominatim
+
+    entry = CITY_FALLBACK.get(location.strip().lower())
+    if entry:
+        logger.info("Geocode %s via tabel kota umum (fallback)", location)
+        center = {"lat": entry["lat"], "lng": entry["lng"]}
+        return {"center": center, "bounds": _bounds_around(center, DEFAULT_RADIUS_KM)}
+
+    raise RuntimeError(
+        f"Tidak dapat menentukan lokasi '{location}'. "
+        "Periksa ejaan kota/kecamatan, atau berikan lat/lng secara manual pada request."
+    )
 
 
 def _place_to_kos(place: dict, city: str) -> KosCreate:
@@ -127,6 +182,7 @@ def _place_to_kos(place: dict, city: str) -> KosCreate:
         source="gmaps",
         address=address,
         city=_extract_city(address, city),
+        district=_extract_district(address),
         latitude=place.get("latitude"),
         longitude=place.get("longitude"),
         rating=place.get("rating"),
@@ -143,27 +199,29 @@ def _place_to_kos(place: dict, city: str) -> KosCreate:
 async def scrape_kos(
     city: str,
     keyword: str = "kos kosan",
+    district: str | None = None,
     lat: float | None = None,
     lng: float | None = None,
     radius_km: float | None = None,
 ) -> list[KosCreate]:
-    """Scrape kos-kosan murni via Google Places API dengan pembatas lokasi kota."""
+    """Scrape kos-kosan murni via Google Places API dengan pembatas lokasi kota/kecamatan."""
     radius = radius_km or DEFAULT_RADIUS_KM
+    location_query = f"{district}, {city}" if district else city
 
     async with httpx.AsyncClient() as client:
         if lat is not None and lng is not None:
             center = {"lat": lat, "lng": lng}
             bounds = _bounds_around(center, radius)
         else:
-            geo = await _geocode_city(client, city)
+            geo = await _geocode_city(client, location_query)
             if not geo:
                 return []
             center = geo["center"]
             bounds = geo["bounds"]
 
-        found = await places.search_places(client, city, keyword, bounds=bounds)
+        found = await places.search_places(client, location_query, keyword, bounds=bounds)
         if not found:
-            logger.warning("Google Places tidak menemukan hasil untuk %s", city)
+            logger.warning("Google Places tidak menemukan hasil untuk %s", location_query)
             return []
 
         results = [_place_to_kos(p, city) for p in found]

@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @router.get("", response_model=PaginatedKos)
 async def list_kos(
     city: str = Query(None),
+    district: str = Query(None),
     search: str = Query(None),
     min_rating: float = Query(None),
     sort: str = Query("created_at"),
@@ -30,10 +31,17 @@ async def list_kos(
 
     if city:
         query = query.where(Kos.city.ilike(f"%{city}%"))
+    if district:
+        query = query.where(Kos.district.ilike(f"%{district}%"))
     if search:
         pattern = f"%{search}%"
         query = query.where(
-            or_(Kos.name.ilike(pattern), Kos.address.ilike(pattern), Kos.city.ilike(pattern))
+            or_(
+                Kos.name.ilike(pattern),
+                Kos.address.ilike(pattern),
+                Kos.city.ilike(pattern),
+                Kos.district.ilike(pattern),
+            )
         )
     if min_rating is not None:
         query = query.where(Kos.rating >= min_rating)

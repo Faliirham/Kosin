@@ -18,6 +18,12 @@
           placeholder="Keyword (contoh: kos kosan)"
           @keyup.enter="emitScrape"
         />
+        <input
+          v-model="scrapeDistrict"
+          class="input input-district"
+          placeholder="Kecamatan/Kelurahan (opsional)"
+          @keyup.enter="emitScrape"
+        />
         <button class="btn btn-primary" @click="emitScrape" :disabled="loading || !city">
           <span v-if="loading" class="spinner"></span>
           <span v-else>🔍</span>
@@ -46,6 +52,12 @@
           placeholder="Kota / Kecamatan"
           @input="emitFilter"
         />
+        <input
+          v-model="filterDistrict"
+          class="input input-district"
+          placeholder="Kecamatan/Kelurahan"
+          @input="emitFilter"
+        />
         <select v-model="minRating" class="select" @change="emitFilter" title="Rating minimal">
           <option value="">Semua rating</option>
           <option value="2">2★ ke atas</option>
@@ -72,28 +84,44 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
-defineProps({ loading: Boolean })
+const props = defineProps({ loading: Boolean, filters: Object })
 const emit = defineEmits(['scrape', 'filter'])
 
 const city = ref('')
 const keyword = ref('kos kosan')
+const scrapeDistrict = ref('')
 const search = ref('')
 const filterCity = ref('')
+const filterDistrict = ref('')
 const minRating = ref('')
 const sort = ref('created_at')
 
-const hasActiveFilter = computed(() => !!(search.value || filterCity.value || minRating.value || sort.value !== 'created_at'))
+watch(() => props.filters, (f) => {
+  if (!f) return
+  search.value = f.search || ''
+  filterCity.value = f.city || ''
+  filterDistrict.value = f.district || ''
+  minRating.value = f.min_rating != null ? String(f.min_rating) : ''
+  sort.value = f.sort || 'created_at'
+}, { deep: true })
+
+const hasActiveFilter = computed(() => !!(search.value || filterCity.value || filterDistrict.value || minRating.value || sort.value !== 'created_at'))
 
 function emitScrape() {
-  emit('scrape', { city: city.value, keyword: keyword.value })
+  emit('scrape', {
+    city: city.value,
+    keyword: keyword.value,
+    district: scrapeDistrict.value || undefined,
+  })
 }
 
 function emitFilter() {
   emit('filter', {
     search: search.value || undefined,
     city: filterCity.value || undefined,
+    district: filterDistrict.value || undefined,
     min_rating: minRating.value ? Number(minRating.value) : undefined,
     sort: sort.value,
   })
@@ -102,6 +130,7 @@ function emitFilter() {
 function resetFilters() {
   search.value = ''
   filterCity.value = ''
+  filterDistrict.value = ''
   minRating.value = ''
   sort.value = 'created_at'
   emitFilter()
@@ -174,6 +203,11 @@ function resetFilters() {
 .input-keyword {
   flex: 1.5;
   min-width: 140px;
+}
+
+.input-district {
+  flex: 1.2;
+  min-width: 160px;
 }
 
 .input-city {
