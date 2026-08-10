@@ -148,6 +148,11 @@ test.describe('search results render identically across breakpoints', () => {
       .evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)
     expect(cols).toBe(2)
     await expect(page.locator('.map-container')).toBeVisible()
+
+    // Regression guard: the scrollable list must never squeeze cards (flex
+    // shrink bug made desktop cards collapse to a few pixels tall).
+    const firstHeight = await first.evaluate(el => el.getBoundingClientRect().height)
+    expect(firstHeight).toBeGreaterThan(150)
   })
 
   test('mobile: same kos cards render in a single-column layout', async ({ page }) => {
@@ -172,6 +177,9 @@ test.describe('search results render identically across breakpoints', () => {
       .evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)
     expect(cols).toBe(1)
     await expect(page.locator('.map-container')).toBeVisible()
+
+    const firstHeight = await first.evaluate(el => el.getBoundingClientRect().height)
+    expect(firstHeight).toBeGreaterThan(150)
   })
 })
 

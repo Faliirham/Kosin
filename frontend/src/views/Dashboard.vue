@@ -346,8 +346,8 @@ onBeforeUnmount(() => {
 }
 
 .kos-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 14px;
   max-height: 76vh;
   overflow-y: auto;
