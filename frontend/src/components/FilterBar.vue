@@ -1,82 +1,102 @@
 <template>
   <div class="filter-bar">
-    <div class="section scrape-section">
-      <div class="section-label">
-        <span class="label-icon">⚡</span>
-        <span>Scrape data baru</span>
+    <div class="scrape-section">
+      <div class="scrape-label">
+        <AppIcon name="compass" :size="16" />
+        <span>Cari kos baru</span>
       </div>
-      <div class="scrape-row">
-        <input
-          v-model="city"
-          class="input"
-          placeholder="Kota (contoh: Bandung, Jakarta)"
-          @keyup.enter="emitScrape"
-        />
-        <input
-          v-model="keyword"
-          class="input input-keyword"
-          placeholder="Keyword (contoh: kos kosan)"
-          @keyup.enter="emitScrape"
-        />
-        <input
-          v-model="scrapeDistrict"
-          class="input input-district"
-          placeholder="Kecamatan/Kelurahan (opsional)"
-          @keyup.enter="emitScrape"
-        />
-        <button class="btn btn-primary" @click="emitScrape" :disabled="loading || !city">
+      <form class="scrape-row" @submit.prevent="emitScrape">
+        <div class="field field-grow">
+          <AppIcon name="map-pin" class="field-icon" :size="17" />
+          <input
+            v-model="city"
+            class="input"
+            placeholder="Kota — Bandung, Jakarta…"
+            aria-label="Nama kota"
+          />
+        </div>
+        <div class="field field-keyword">
+          <AppIcon name="search" class="field-icon" :size="17" />
+          <input
+            v-model="keyword"
+            class="input"
+            placeholder="Keyword — kos kosan murah"
+            aria-label="Keyword pencarian"
+          />
+        </div>
+        <div class="field field-district">
+          <AppIcon name="buildings" class="field-icon" :size="17" />
+          <input
+            v-model="scrapeDistrict"
+            class="input"
+            placeholder="Kecamatan (opsional)"
+            aria-label="Kecamatan atau kelurahan"
+          />
+        </div>
+        <button class="btn btn-primary" type="submit" :disabled="loading || !city">
           <span v-if="loading" class="spinner"></span>
-          <span v-else>🔍</span>
-          <span>{{ loading ? 'Mencari...' : 'Cari' }}</span>
+          <AppIcon v-else name="search" :size="17" />
+          <span>{{ loading ? 'Mencari…' : 'Cari' }}</span>
         </button>
-      </div>
+      </form>
     </div>
 
-    <div class="section filter-section">
-      <div class="section-label">
-        <span class="label-icon">🎛️</span>
+    <div class="divider"></div>
+
+    <div class="filter-section">
+      <div class="filter-label">
+        <AppIcon name="filter" :size="15" />
         <span>Filter &amp; urutkan</span>
       </div>
       <div class="filter-row">
-        <div class="search-box">
-          <span class="search-icon">⌕</span>
+        <div class="field field-search">
+          <AppIcon name="search" class="field-icon" :size="16" />
           <input
             v-model="search"
-            placeholder="Cari nama, kota, atau kecamatan..."
+            class="input"
+            placeholder="Cari nama, kota, atau kecamatan…"
+            aria-label="Cari kos"
             @input="emitFilter"
           />
         </div>
-        <input
-          v-model="filterCity"
-          class="input input-city"
-          placeholder="Kota / Kecamatan"
-          @input="emitFilter"
-        />
-        <input
-          v-model="filterDistrict"
-          class="input input-district"
-          placeholder="Kecamatan/Kelurahan"
-          @input="emitFilter"
-        />
-        <select v-model="minRating" class="select" @change="emitFilter" title="Rating minimal">
+        <div class="field">
+          <input
+            v-model="filterCity"
+            class="input"
+            placeholder="Kota"
+            aria-label="Filter kota"
+            @input="emitFilter"
+          />
+        </div>
+        <div class="field">
+          <input
+            v-model="filterDistrict"
+            class="input"
+            placeholder="Kecamatan"
+            aria-label="Filter kecamatan"
+            @input="emitFilter"
+          />
+        </div>
+        <select v-model="minRating" class="select" @change="emitFilterNow" aria-label="Rating minimal">
           <option value="">Semua rating</option>
           <option value="2">2★ ke atas</option>
           <option value="3">3★ ke atas</option>
           <option value="4">4★ ke atas</option>
-          <option value="4.5">4.5★ ke atas</option>
+          <option value="4.5">4,5★ ke atas</option>
         </select>
-        <select v-model="sort" class="select" @change="emitFilter" title="Urutkan">
+        <select v-model="sort" class="select" @change="emitFilterNow" aria-label="Urutkan">
           <option value="created_at">Terbaru</option>
           <option value="rating">Rating tertinggi</option>
           <option value="name">Nama (A-Z)</option>
         </select>
         <button
           v-if="hasActiveFilter"
-          class="btn btn-ghost"
+          class="btn btn-reset"
           @click="resetFilters"
           title="Reset filter"
         >
-          ✕ Reset
+          <AppIcon name="close" :size="14" />
+          Reset
         </button>
       </div>
     </div>
@@ -84,9 +104,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import AppIcon from './AppIcon.vue'
 
-const props = defineProps({ loading: Boolean, filters: Object })
+const props = defineProps({ loading: Boolean, filters: Object, initialCity: String })
 const emit = defineEmits(['scrape', 'filter'])
 
 const city = ref('')
@@ -107,6 +128,10 @@ watch(() => props.filters, (f) => {
   sort.value = f.sort || 'created_at'
 }, { deep: true })
 
+onMounted(() => {
+  if (props.initialCity) city.value = props.initialCity
+})
+
 const hasActiveFilter = computed(() => !!(search.value || filterCity.value || filterDistrict.value || minRating.value || sort.value !== 'created_at'))
 
 function emitScrape() {
@@ -117,14 +142,26 @@ function emitScrape() {
   })
 }
 
-function emitFilter() {
-  emit('filter', {
+function buildFilterPayload() {
+  return {
     search: search.value || undefined,
     city: filterCity.value || undefined,
     district: filterDistrict.value || undefined,
     min_rating: minRating.value ? Number(minRating.value) : undefined,
     sort: sort.value,
-  })
+  }
+}
+
+let filterTimer = null
+
+function emitFilter() {
+  clearTimeout(filterTimer)
+  filterTimer = setTimeout(() => emit('filter', buildFilterPayload()), 350)
+}
+
+function emitFilterNow() {
+  clearTimeout(filterTimer)
+  emit('filter', buildFilterPayload())
 }
 
 function resetFilters() {
@@ -133,173 +170,176 @@ function resetFilters() {
   filterDistrict.value = ''
   minRating.value = ''
   sort.value = 'created_at'
-  emitFilter()
+  emitFilterNow()
 }
 </script>
 
 <style scoped>
 .filter-bar {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  padding: 22px 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.section-label {
+.scrape-label,
+.filter-label {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  color: var(--muted);
 }
 
-.label-icon {
-  font-size: 14px;
+.scrape-label .icon,
+.filter-label .icon {
+  color: var(--accent);
 }
 
-.scrape-row,
+.scrape-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
 .filter-row {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--line);
+}
+
+.field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-icon {
+  position: absolute;
+  left: 13px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.field-grow { flex: 2.2; min-width: 180px; }
+.field-keyword { flex: 1.6; min-width: 160px; }
+.field-district { flex: 1.2; min-width: 160px; }
+
+.filter-row .field {
+  flex: 1 1 150px;
+  min-width: 150px;
+}
+
+.field-search {
+  flex: 2.4;
+  min-width: 220px;
 }
 
 .input,
 .select {
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
   font-size: 14px;
-  background: #f8fafc;
+  font-family: var(--font-body);
+  background: var(--surface-2);
+  color: var(--ink);
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
   outline: none;
 }
 
+.field-icon + .input {
+  padding-left: 38px;
+}
+
+.input::placeholder {
+  color: var(--muted);
+  opacity: 0.85;
+}
+
 .input:focus,
 .select:focus {
-  border-color: var(--primary);
+  border-color: var(--accent);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-}
-
-.input {
-  flex: 2;
-  min-width: 160px;
-}
-
-.input-keyword {
-  flex: 1.5;
-  min-width: 140px;
-}
-
-.input-district {
-  flex: 1.2;
-  min-width: 160px;
-}
-
-.input-city {
-  flex: 1;
-  min-width: 140px;
+  box-shadow: var(--focus);
 }
 
 .select {
   flex: 0 1 auto;
   min-width: 140px;
   cursor: pointer;
-}
-
-.search-box {
-  flex: 3;
-  min-width: 200px;
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  font-size: 18px;
-  color: var(--text-light);
-  pointer-events: none;
-}
-
-.search-box input {
-  width: 100%;
-  padding: 10px 14px 10px 36px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 14px;
-  background: #f8fafc;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-}
-
-.search-box input:focus {
-  border-color: var(--primary);
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238a7c6b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
 }
 
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 10px 20px;
+  padding: 11px 24px;
   border: none;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+  border-radius: 12px;
+  font-size: 14.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
 }
 
 .btn-primary {
   flex: 0 0 auto;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: var(--accent);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  box-shadow: var(--shadow-accent);
 }
 
 .btn-primary:hover:not(:disabled) {
+  background: var(--accent-strong);
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.4);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 
 .btn-primary:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
-.btn-ghost {
+.btn-reset {
   background: transparent;
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-  padding: 9px 16px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 10px 16px;
 }
 
-.btn-ghost:hover {
+.btn-reset:hover {
   color: var(--danger);
-  border-color: rgba(239, 68, 68, 0.4);
-  background: #fef2f2;
+  border-color: rgba(192, 57, 43, 0.5);
+  background: var(--danger-soft);
 }
 
 .spinner {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   border: 2px solid rgba(255, 255, 255, 0.4);
   border-top-color: #fff;
   border-radius: 50%;
@@ -310,10 +350,17 @@ function resetFilters() {
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
+  .scrape-row {
+    flex-direction: column;
+  }
+
   .btn-primary {
     width: 100%;
-    justify-content: center;
+  }
+
+  .filter-row .select {
+    flex: 1 1 45%;
   }
 }
 </style>

@@ -1,123 +1,243 @@
 <template>
-  <div class="kos-card" @click="$emit('click')">
-    <div class="card-top">
-      <span class="source-badge source-gmaps">
-        <span class="badge-dot"></span>
-        Google
-      </span>
-      <span v-if="kos.rating" class="rating-badge">
-        <span class="star">★</span>
+  <article class="kos-card" @click="$emit('click')">
+    <div class="card-photo">
+      <img
+        v-if="hasPhoto && !photoFailed"
+        :src="kos.photos[0]"
+        :alt="`Foto ${kos.name}`"
+        loading="lazy"
+        @error="photoFailed = true"
+      />
+      <div v-else class="card-photo-fallback">
+        <span class="fallback-mark">
+          <AppIcon name="buildings" :size="92" />
+        </span>
+        <span class="fallback-initial">{{ initial }}</span>
+      </div>
+      <div class="photo-shade"></div>
+
+      <span class="rating-badge" v-if="kos.rating">
+        <AppIcon name="star" filled :size="12" />
         <span class="rating-num">{{ kos.rating.toFixed(1) }}</span>
         <span v-if="kos.total_reviews" class="review-count">({{ kos.total_reviews }})</span>
       </span>
+
+      <span class="source-tag" :class="`source-${kos.source || 'osm'}`">
+        <AppIcon name="layers" :size="11" />
+        {{ (kos.source || 'osm') === 'gmaps' ? 'Google' : 'OSM' }}
+      </span>
+
+      <span class="card-arrow">
+        <AppIcon name="arrow-up-right" :size="16" />
+      </span>
     </div>
 
-    <h3 class="card-title">{{ kos.name }}</h3>
+    <div class="card-body">
+      <h3 class="card-title">{{ kos.name }}</h3>
 
-    <p class="card-address">
-      <span class="pin">📍</span>
-      <span>{{ kos.address || 'Alamat tidak tersedia' }}</span>
-    </p>
+      <p class="card-address">
+        <AppIcon name="map-pin" :size="13" class="pin" />
+        <span>{{ kos.address || 'Alamat tidak tersedia' }}</span>
+      </p>
 
-    <div class="card-meta">
-      <span v-if="kos.price_range" class="chip chip-price">{{ kos.price_range }}</span>
-      <span v-if="kos.city" class="chip chip-city">{{ kos.city }}</span>
-      <span v-if="kos.district" class="chip chip-district">{{ kos.district }}</span>
-      <span v-if="!kos.rating" class="chip chip-na">Belum ada rating</span>
+      <div class="card-meta">
+        <span v-if="kos.price_range" class="chip chip-price">
+          <AppIcon name="tag" :size="11" />
+          {{ kos.price_range }}
+        </span>
+        <span v-if="kos.city" class="chip chip-city">{{ kos.city }}</span>
+        <span v-if="kos.district" class="chip chip-district">{{ shortDistrict }}</span>
+        <span v-if="!kos.rating" class="chip chip-na">Belum ada rating</span>
+      </div>
     </div>
-  </div>
+  </article>
 </template>
 
 <script setup>
-defineProps({ kos: Object })
+import { ref, computed } from 'vue'
+import AppIcon from './AppIcon.vue'
+
+const props = defineProps({ kos: Object })
 defineEmits(['click'])
+
+const photoFailed = ref(false)
+
+const hasPhoto = computed(() => !!(props.kos.photos && props.kos.photos.length))
+
+const initial = computed(() => (props.kos.name || '?').trim().charAt(0).toUpperCase())
+
+const shortDistrict = computed(() => {
+  const d = props.kos.district || ''
+  return d.replace(/^Kec\.\s*/i, '')
+})
 </script>
 
 <style scoped>
 .kos-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
   cursor: pointer;
-  transition: transform 0.18s, box-shadow 0.2s, border-color 0.2s;
+  transition: transform 0.22s, box-shadow 0.25s, border-color 0.25s;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
 .kos-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: rgba(99, 102, 241, 0.35);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(200, 83, 27, 0.35);
 }
 
-.card-top {
+.kos-card:active {
+  transform: translateY(-2px) scale(0.995);
+}
+
+/* ── Photo ────────────────────────── */
+.card-photo {
+  position: relative;
+  height: 130px;
+  overflow: hidden;
+}
+
+.card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.kos-card:hover .card-photo img {
+  transform: scale(1.05);
+}
+
+.card-photo-fallback {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: center;
+  background:
+    radial-gradient(80% 120% at 85% 0%, rgba(200, 83, 27, 0.22), transparent 60%),
+    radial-gradient(70% 110% at 10% 100%, rgba(224, 161, 27, 0.2), transparent 60%),
+    linear-gradient(120deg, #2c241a, #3a2f22);
 }
 
-.source-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 999px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.fallback-mark {
+  position: absolute;
+  right: -16px;
+  bottom: -22px;
+  color: rgba(255, 255, 255, 0.1);
 }
 
-.badge-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
+.fallback-initial {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: -0.03em;
 }
 
-.source-gmaps {
-  background: rgba(66, 133, 244, 0.1);
-  color: #1a73e8;
-}
-
-.source-osm {
-  background: rgba(76, 175, 80, 0.12);
-  color: #2e7d32;
+.photo-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(22, 16, 10, 0.55), transparent 55%);
+  pointer-events: none;
 }
 
 .rating-badge {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(245, 158, 11, 0.12);
-  color: #b45309;
+  background: rgba(20, 15, 10, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #ffd66b;
   font-size: 13px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 999px;
-}
-
-.star {
-  color: var(--rating);
-  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 .review-count {
   font-size: 11px;
-  font-weight: 500;
-  color: #b45309;
-  opacity: 0.8;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.source-tag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 5px 10px;
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.source-gmaps {
+  background: rgba(26, 115, 232, 0.85);
+  color: #fff;
+}
+
+.source-osm {
+  background: rgba(47, 125, 79, 0.85);
+  color: #fff;
+}
+
+.card-arrow {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: rgba(20, 15, 10, 0.5);
+  color: #fff;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.22s, transform 0.22s;
+}
+
+.kos-card:hover .card-arrow {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Body ─────────────────────────── */
+.card-body {
+  padding: 16px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
 }
 
 .card-title {
-  font-size: 15.5px;
+  font-family: var(--font-display);
+  font-size: 16px;
   font-weight: 700;
-  color: var(--text);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   line-height: 1.35;
+  color: var(--ink);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -128,7 +248,7 @@ defineEmits(['click'])
   display: flex;
   gap: 6px;
   font-size: 12.5px;
-  color: var(--text-muted);
+  color: var(--muted);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -137,8 +257,9 @@ defineEmits(['click'])
 }
 
 .pin {
-  font-size: 11px;
   flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--accent);
 }
 
 .card-meta {
@@ -150,29 +271,32 @@ defineEmits(['click'])
 }
 
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 11px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 999px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 8px;
 }
 
 .chip-price {
-  background: #ecfdf5;
-  color: #047857;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .chip-city {
-  background: var(--primary-light);
-  color: var(--primary-dark);
+  background: #efe9dc;
+  color: var(--ink-soft);
 }
 
 .chip-district {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--gold-soft);
+  color: #8f6410;
 }
 
 .chip-na {
-  background: #f1f5f9;
-  color: var(--text-light);
+  background: var(--bg-soft);
+  color: var(--muted);
 }
 </style>

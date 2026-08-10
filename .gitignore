@@ -35,3 +35,7 @@ logs/
 # Database
 *.db
 *.sqlite
+
+#agent
+.agents/
+skills-lock.json

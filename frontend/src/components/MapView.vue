@@ -2,7 +2,9 @@
   <div class="map-wrap">
     <div ref="mapContainer" class="map"></div>
     <div v-if="error" class="map-error">
-      <span class="state-icon">🗺️</span>
+      <span class="state-mark">
+        <AppIcon name="map-pin" :size="26" />
+      </span>
       <p>{{ error }}</p>
     </div>
   </div>
@@ -11,6 +13,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { Loader } from '@googlemaps/js-api-loader'
+import AppIcon from './AppIcon.vue'
 
 const props = defineProps({ markers: Array })
 
@@ -22,6 +25,15 @@ let map = null
 let markersLayer = []
 
 const DEFAULT_CENTER = { lat: -6.9175, lng: 107.6191 }
+
+const PIN_SVG =
+  'data:image/svg+xml;charset=utf-8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="46" viewBox="0 0 36 46">
+      <path d="M18 1C9 1 2 8.2 2 17.2 2 29 18 45 18 45s16-16 16-27.8C34 8.2 27 1 18 1z" fill="#c8531b" stroke="#fff" stroke-width="2.4"/>
+      <path d="M18 10l6.5 9.5H20V28h-4v-8.5h-4.5z" fill="#fff"/>
+    </svg>`
+  )
 
 async function initMap() {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY
@@ -37,6 +49,7 @@ async function initMap() {
       center: DEFAULT_CENTER,
       zoom: 11,
       mapId: undefined,
+      backgroundColor: '#efe9dc',
     })
     updateMarkers()
   } catch (e) {
@@ -47,18 +60,28 @@ async function initMap() {
 
 function popupHtml(m) {
   const rating = m.rating
-    ? `<span style="color:#f59e0b;font-weight:700;">★ ${Number(m.rating).toFixed(1)}</span>`
-    : '<span style="color:#94a3b8;">Belum ada rating</span>'
+    ? `<span class="kp-rating">★ ${Number(m.rating).toFixed(1)}</span>`
+    : '<span class="kp-na">Belum ada rating</span>'
   const link = m.google_maps_url
-    ? `<a href="${m.google_maps_url}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:#4285f4;font-weight:600;text-decoration:none;">Buka di Google Maps ↗</a>`
+    ? `<a href="${m.google_maps_url}" target="_blank" rel="noopener" class="kp-link">Buka di Google Maps ↗</a>`
     : ''
   return `
-    <div style="font-family:'Segoe UI',Roboto,sans-serif;min-width:170px;">
-      <div style="font-weight:700;font-size:13px;color:#0f172a;margin-bottom:4px;">${m.name || ''}</div>
-      ${rating}
-      <div style="font-size:11px;color:#64748b;margin-top:2px;">${m.address || ''}</div>
+    <div class="kp-wrap">
+      <div class="kp-name">${m.name || ''}</div>
+      <div class="kp-meta">${rating}</div>
+      <div class="kp-addr">${m.address || ''}</div>
       ${link}
-    </div>`
+    </div>
+    <style>
+      .kp-wrap { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; min-width: 180px; }
+      .kp-name { font-weight: 700; font-size: 13.5px; color: #221b13; margin-bottom: 4px; line-height: 1.35; }
+      .kp-meta { margin-bottom: 3px; }
+      .kp-rating { color: #b97d0b; font-weight: 700; font-size: 12.5px; }
+      .kp-na { color: #8a7c6b; font-size: 12px; }
+      .kp-addr { font-size: 11.5px; color: #8a7c6b; line-height: 1.5; margin-bottom: 6px; }
+      .kp-link { display: inline-block; color: #c8531b; font-weight: 700; font-size: 12px; text-decoration: none; }
+      .kp-link:hover { text-decoration: underline; }
+    </style>`
 }
 
 function updateMarkers() {
@@ -69,11 +92,18 @@ function updateMarkers() {
   const valid = props.markers.filter(m => m.latitude && m.longitude)
   if (valid.length === 0) return
 
+  const icon = {
+    url: PIN_SVG,
+    scaledSize: new googleMaps.maps.Size(36, 46),
+    anchor: new googleMaps.maps.Point(18, 44),
+  }
+
   valid.forEach(m => {
     const marker = new googleMaps.maps.Marker({
       position: { lat: m.latitude, lng: m.longitude },
       map,
       title: m.name,
+      icon,
     })
     const info = new googleMaps.maps.InfoWindow({ content: popupHtml(m) })
     marker.addListener('click', () => info.open({ map, anchor: marker }))
@@ -108,7 +138,7 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   min-height: 420px;
-  border-radius: var(--radius);
+  border-radius: inherit;
 }
 
 .map-error {
@@ -118,20 +148,27 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  background: #f8fafc;
-  border-radius: var(--radius);
+  gap: 10px;
+  background: var(--surface-2);
+  border-radius: inherit;
   text-align: center;
   padding: 24px;
 }
 
-.map-error .state-icon {
-  font-size: 32px;
+.state-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .map-error p {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--muted);
   max-width: 340px;
   line-height: 1.6;
 }

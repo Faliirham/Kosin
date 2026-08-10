@@ -28,3 +28,19 @@ export async function healthCheck() {
   const res = await api.get('/health')
   return res.data
 }
+
+export async function fetchStats() {
+  const [summary, sample] = await Promise.all([
+    api.get('/kos', { params: { limit: 1 } }),
+    api.get('/kos', { params: { limit: 100, sort: 'rating', order: 'desc' } }),
+  ])
+  const rated = sample.data.filter(k => k.rating)
+  const cities = [...new Set(sample.data.map(k => k.city).filter(Boolean))]
+  return {
+    total: summary.data.total || 0,
+    avgRating: rated.length
+      ? rated.reduce((sum, k) => sum + k.rating, 0) / rated.length
+      : 0,
+    cities,
+  }
+}

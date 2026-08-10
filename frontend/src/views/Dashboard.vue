@@ -1,25 +1,41 @@
 <template>
   <div class="dashboard">
-    <FilterBar :loading="loading" :filters="filters" @scrape="handleScrape" @filter="handleFilter" />
+    <div class="dash-head">
+      <div class="dash-heading">
+        <span class="eyebrow">Jelajahi</span>
+        <h1 class="dash-title">{{ activeCity ? `${activeCity} — kos di sekitarmu` : 'Kos-kosan di sekitarmu' }}</h1>
+        <p class="dash-sub">
+          {{ activeCity ? `Hasil pencarian untuk ${activeCity}` : 'Masukkan kota, lalu tekan cari untuk menarik data dari Google Maps.' }}
+        </p>
+      </div>
 
-    <div v-if="!loading && !error && kosList.length" class="stats-row">
-      <div class="stat stat-total">
-        <span class="stat-num">{{ total }}</span>
-        <span class="stat-label">kos tersedia</span>
-      </div>
-      <div class="stat stat-gmaps">
-        <span class="stat-num">{{ sourceCounts.gmaps }}</span>
-        <span class="stat-label">sumber Google</span>
-      </div>
-      <div class="stat stat-osm">
-        <span class="stat-num">{{ sourceCounts.osm }}</span>
-        <span class="stat-label">sumber OSM</span>
+      <div class="dash-stats" v-if="!loading && kosList.length">
+        <div class="dash-stat">
+          <span class="dash-stat-num">{{ total }}</span>
+          <span class="dash-stat-label">kos tersedia</span>
+        </div>
+        <div class="dash-stat">
+          <span class="dash-stat-num dash-stat-gmaps">{{ sourceCounts.gmaps }}</span>
+          <span class="dash-stat-label">Google Maps</span>
+        </div>
+        <div class="dash-stat">
+          <span class="dash-stat-num dash-stat-osm">{{ sourceCounts.osm }}</span>
+          <span class="dash-stat-label">OpenStreetMap</span>
+        </div>
       </div>
     </div>
 
+    <FilterBar
+      :loading="loading"
+      :filters="filters"
+      :initial-city="initialCity"
+      @scrape="handleScrape"
+      @filter="handleFilter"
+    />
+
     <div v-if="loading" class="loading-grid">
       <div v-for="i in 6" :key="i" class="skeleton-card">
-        <div class="skeleton skeleton-top"></div>
+        <div class="skeleton skeleton-photo"></div>
         <div class="skeleton skeleton-title"></div>
         <div class="skeleton skeleton-line"></div>
         <div class="skeleton skeleton-line short"></div>
@@ -27,55 +43,79 @@
     </div>
 
     <div v-else-if="error" class="state-card state-error">
-      <span class="state-icon">😵</span>
+      <span class="state-mark">
+        <AppIcon name="alert" :size="30" />
+      </span>
       <h3>Terjadi kesalahan</h3>
       <p>{{ error }}</p>
-      <button class="btn-retry" @click="loadKos()">Coba lagi</button>
+      <button class="btn-retry" @click="loadKos()">
+        <AppIcon name="arrow-right" :size="16" />
+        Coba lagi
+      </button>
     </div>
 
     <div v-else-if="kosList.length" class="content">
-      <div class="kos-list">
-        <KosCard
-          v-for="kos in kosList"
-          :key="kos.id"
-          :kos="kos"
-          @click="$emit('view-detail', kos.id)"
-        />
-        <button v-if="total > kosList.length" class="btn-load-more" @click="loadMore">
-          <span v-if="loading" class="spinner-sm"></span>
-          <span>{{ loading ? 'Memuat...' : `Muat lebih banyak (${kosList.length}/${total})` }}</span>
-        </button>
+      <div class="list-wrap">
+        <div class="kos-list" :class="{ 'is-filtering': filtering }">
+          <KosCard
+            v-for="kos in kosList"
+            :key="kos.id"
+            :kos="kos"
+            @click="openDetail(kos.id)"
+          />
+          <button v-if="total > kosList.length" class="btn-load-more" @click="loadMore" :disabled="loadingMore">
+            <span v-if="loadingMore" class="spinner-sm"></span>
+            <span>{{ loadingMore ? 'Memuat…' : `Muat lebih banyak (${kosList.length}/${total})` }}</span>
+          </button>
+        </div>
+        <div v-if="filtering" class="list-overlay">
+          <span class="spinner-md"></span>
+          <span>Memfilter…</span>
+        </div>
       </div>
+
       <div class="map-container">
         <MapView :markers="kosList" />
       </div>
     </div>
 
     <div v-else class="state-card state-empty">
-      <span class="state-icon">🏠</span>
+      <span class="state-mark">
+        <AppIcon name="buildings" :size="30" />
+      </span>
       <h3>Belum ada data kos</h3>
-      <p>Masukkan nama kota lalu klik <strong>Cari</strong> untuk mencari kos-kosan terdekat dari Google Maps.</p>
+      <p>Masukkan nama kota lalu klik <strong>Cari</strong> untuk menarik kos-kosan terdekat dari Google Maps.</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, inject } from 'vue'
 import FilterBar from '../components/FilterBar.vue'
 import KosCard from '../components/KosCard.vue'
 import MapView from '../components/MapView.vue'
+import AppIcon from '../components/AppIcon.vue'
 import { fetchKos, triggerScrape } from '../services/api.js'
 
-defineEmits(['view-detail'])
+const props = defineProps({ prefillCity: { type: String, default: '' } })
+
+const navigate = inject('navigate')
+const toast = inject('toast')
 
 const kosList = ref([])
 const loading = ref(false)
+const loadingMore = ref(false)
+const filtering = ref(false)
 const error = ref('')
 const filters = ref({})
 const page = ref(0)
 const total = ref(0)
 
 const PAGE_SIZE = 20
+
+const initialCity = props.prefillCity || ''
+
+const activeCity = computed(() => filters.value.city || initialCity || '')
 
 const sourceCounts = computed(() => {
   const counts = { gmaps: 0, osm: 0 }
@@ -86,9 +126,14 @@ const sourceCounts = computed(() => {
   return counts
 })
 
+function openDetail(id) {
+  navigate('detail', { id })
+}
+
 async function loadKos(params = {}, reset = true) {
   if (reset) page.value = 0
   loading.value = true
+  loadingMore.value = false
   error.value = ''
   try {
     const res = await fetchKos({ ...params, limit: PAGE_SIZE, offset: page.value * PAGE_SIZE })
@@ -125,150 +170,276 @@ async function handleScrape({ city, keyword, district }) {
 
 function handleFilter(params) {
   filters.value = { ...params }
-  loadKos(filters.value, true)
+  page.value = 0
+  filtering.value = true
+  error.value = ''
+  fetchKos({ ...params, limit: PAGE_SIZE, offset: 0 })
+    .then(res => {
+      kosList.value = res.data
+      total.value = res.total
+    })
+    .catch(e => {
+      error.value = 'Gagal memuat data: ' + (e.response?.data?.detail || e.message)
+    })
+    .finally(() => {
+      filtering.value = false
+    })
 }
 
-function loadMore() {
-  page.value += 1
-  loadKos(filters.value, false)
+async function loadMore() {
+  if (loadingMore.value) return
+  loadingMore.value = true
+  try {
+    const next = page.value + 1
+    const res = await fetchKos({ ...filters.value, limit: PAGE_SIZE, offset: next * PAGE_SIZE })
+    kosList.value = kosList.value.concat(res.data)
+    total.value = res.total
+    page.value = next
+  } catch (e) {
+    toast('Gagal memuat lebih banyak: ' + (e.response?.data?.detail || e.message), 'error')
+  } finally {
+    loadingMore.value = false
+  }
 }
 
-onMounted(() => loadKos())
+onMounted(() => {
+  if (initialCity) {
+    handleScrape({ city: initialCity, keyword: 'kos kosan' })
+  } else {
+    loadKos()
+  }
+})
 </script>
 
 <style scoped>
 .dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 36px 20px 72px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 22px;
 }
 
-/* ── Stats ─────────────────────────── */
-.stats-row {
+/* ── Head ─────────────────────────── */
+.dash-head {
   display: flex;
-  gap: 12px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
   flex-wrap: wrap;
 }
 
-.stat {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px 18px;
+.eyebrow {
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+
+.dash-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3.4vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-top: 6px;
+}
+
+.dash-sub {
+  margin-top: 8px;
+  font-size: 14.5px;
+  color: var(--muted);
+  max-width: 52ch;
+}
+
+.dash-stats {
+  display: flex;
+  gap: 12px;
+}
+
+.dash-stat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 12px 20px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 1px;
   box-shadow: var(--shadow-sm);
 }
 
-.stat-num {
-  font-size: 20px;
+.dash-stat-num {
+  font-family: var(--font-display);
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.02em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
 }
 
-.stat-label {
+.dash-stat-gmaps { color: var(--google); }
+.dash-stat-osm { color: var(--osm); }
+
+.dash-stat-label {
   font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 500;
+  color: var(--muted);
+  font-weight: 600;
 }
 
-.stat-total .stat-num { color: var(--primary-dark); }
-.stat-gmaps .stat-num { color: var(--google); }
-.stat-osm .stat-num { color: var(--osm); }
-
-/* ── Content ───────────────────────── */
+/* ── Content ──────────────────────── */
 .content {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 22px;
   align-items: start;
 }
 
 .kos-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-height: 72vh;
+  gap: 14px;
+  max-height: 76vh;
   overflow-y: auto;
-  padding-right: 4px;
+  padding-right: 6px;
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: var(--line-strong) transparent;
+  transition: opacity 0.2s;
+}
+
+.list-wrap {
+  position: relative;
+}
+
+.kos-list.is-filtering {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.list-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(246, 242, 234, 0.4);
+  border-radius: var(--r-lg);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+
+.spinner-md {
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }
 
 .map-container {
-  height: 600px;
-  border-radius: var(--radius);
+  height: 640px;
+  border-radius: var(--r-lg);
   overflow: hidden;
   position: sticky;
-  top: 84px;
+  top: 86px;
   box-shadow: var(--shadow-md);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
 }
 
-/* ── Skeleton ──────────────────────── */
+/* ── Skeleton ─────────────────────── */
 .loading-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
 }
 
 .skeleton-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  padding-bottom: 18px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .skeleton {
-  border-radius: 6px;
-  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  border-radius: 8px;
+  background: linear-gradient(90deg, #ece4d4 25%, #f6f2ea 50%, #ece4d4 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
 }
 
-.skeleton-top { width: 90px; height: 20px; }
-.skeleton-title { width: 70%; height: 16px; }
-.skeleton-line { width: 100%; height: 12px; }
-.skeleton-line.short { width: 55%; }
+.skeleton-photo {
+  height: 120px;
+  border-radius: 0;
+}
+
+.skeleton-title {
+  width: 70%;
+  height: 16px;
+  margin: 6px 18px 0;
+}
+
+.skeleton-line {
+  width: 100%;
+  height: 12px;
+  margin: 0 18px;
+}
+
+.skeleton-line.short {
+  width: 55%;
+}
 
 @keyframes shimmer {
   to { background-position: -200% 0; }
 }
 
-/* ── State cards ───────────────────── */
+/* ── State cards ──────────────────── */
 .state-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 56px 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 72px 24px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   box-shadow: var(--shadow-sm);
 }
 
-.state-icon {
-  font-size: 42px;
-  margin-bottom: 6px;
+.state-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-bottom: 8px;
 }
 
 .state-card h3 {
-  font-size: 17px;
+  font-family: var(--font-display);
+  font-size: 19px;
   font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .state-card p {
-  font-size: 13.5px;
-  color: var(--text-muted);
-  max-width: 380px;
-  line-height: 1.6;
+  font-size: 14px;
+  color: var(--muted);
+  max-width: 400px;
+  line-height: 1.7;
 }
 
 .state-error p {
@@ -276,20 +447,23 @@ onMounted(() => loadKos())
 }
 
 .btn-retry {
-  margin-top: 10px;
-  padding: 9px 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 11px 24px;
   border: none;
-  border-radius: 10px;
-  background: var(--primary);
+  border-radius: 12px;
+  background: var(--accent);
   color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+  font-size: 14.5px;
+  font-weight: 700;
+  box-shadow: var(--shadow-accent);
   transition: background 0.2s, transform 0.15s;
 }
 
 .btn-retry:hover {
-  background: var(--primary-dark);
+  background: var(--accent-strong);
   transform: translateY(-1px);
 }
 
@@ -299,27 +473,26 @@ onMounted(() => loadKos())
   justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 11px 16px;
-  border: 1px dashed var(--primary);
-  border-radius: 10px;
-  background: var(--primary-light);
-  color: var(--primary-dark);
-  font-size: 13.5px;
-  font-weight: 600;
-  cursor: pointer;
+  padding: 13px 16px;
+  border: 1.5px dashed var(--accent);
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 14px;
+  font-weight: 700;
   transition: background 0.2s, transform 0.15s;
 }
 
 .btn-load-more:hover {
-  background: #e0e7ff;
+  background: #f0d6bd;
   transform: translateY(-1px);
 }
 
 .spinner-sm {
   width: 14px;
   height: 14px;
-  border: 2px solid var(--primary-light);
-  border-top-color: var(--primary);
+  border: 2px solid var(--accent-soft);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -342,6 +515,25 @@ onMounted(() => loadKos())
 
   .kos-list {
     max-height: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard {
+    padding: 28px 16px 56px;
+  }
+
+  .dash-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dash-stats {
+    width: 100%;
+  }
+
+  .dash-stat {
+    flex: 1;
   }
 }
 </style>
