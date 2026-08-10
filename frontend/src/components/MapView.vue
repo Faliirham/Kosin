@@ -30,7 +30,7 @@ const PIN_SVG =
   'data:image/svg+xml;charset=utf-8,' +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="46" viewBox="0 0 36 46">
-      <path d="M18 1C9 1 2 8.2 2 17.2 2 29 18 45 18 45s16-16 16-27.8C34 8.2 27 1 18 1z" fill="#c8531b" stroke="#fff" stroke-width="2.4"/>
+      <path d="M18 1C9 1 2 8.2 2 17.2 2 29 18 45 18 45s16-16 16-27.8C34 8.2 27 1 18 1z" fill="#2563eb" stroke="#fff" stroke-width="2.4"/>
       <path d="M18 10l6.5 9.5H20V28h-4v-8.5h-4.5z" fill="#fff"/>
     </svg>`
   )
@@ -49,7 +49,7 @@ async function initMap() {
       center: DEFAULT_CENTER,
       zoom: 11,
       mapId: undefined,
-      backgroundColor: '#efe9dc',
+      backgroundColor: '#e8eef7',
     })
     updateMarkers()
   } catch (e) {
@@ -74,12 +74,12 @@ function popupHtml(m) {
     </div>
     <style>
       .kp-wrap { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; min-width: 180px; }
-      .kp-name { font-weight: 700; font-size: 13.5px; color: #221b13; margin-bottom: 4px; line-height: 1.35; }
+      .kp-name { font-weight: 700; font-size: 13.5px; color: #0f172a; margin-bottom: 4px; line-height: 1.35; }
       .kp-meta { margin-bottom: 3px; }
-      .kp-rating { color: #b97d0b; font-weight: 700; font-size: 12.5px; }
-      .kp-na { color: #8a7c6b; font-size: 12px; }
-      .kp-addr { font-size: 11.5px; color: #8a7c6b; line-height: 1.5; margin-bottom: 6px; }
-      .kp-link { display: inline-block; color: #c8531b; font-weight: 700; font-size: 12px; text-decoration: none; }
+      .kp-rating { color: #2563eb; font-weight: 700; font-size: 12.5px; }
+      .kp-na { color: #64748b; font-size: 12px; }
+      .kp-addr { font-size: 11.5px; color: #64748b; line-height: 1.5; margin-bottom: 6px; }
+      .kp-link { display: inline-block; color: #2563eb; font-weight: 700; font-size: 12px; text-decoration: none; }
       .kp-link:hover { text-decoration: underline; }
     </style>`
 }

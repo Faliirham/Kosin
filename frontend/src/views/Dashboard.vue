@@ -4,9 +4,7 @@
       <div class="dash-heading">
         <span class="eyebrow">Jelajahi</span>
         <h1 class="dash-title">{{ activeCity ? `${activeCity} — kos di sekitarmu` : 'Kos-kosan di sekitarmu' }}</h1>
-        <p class="dash-sub">
-          {{ activeCity ? `Hasil pencarian untuk ${activeCity}` : 'Masukkan kota, lalu tekan cari untuk menarik data dari Google Maps.' }}
-        </p>
+        <p class="dash-sub">{{ dashSub }}</p>
       </div>
 
       <div class="dash-stats" v-if="!loading && kosList.length">
@@ -33,26 +31,20 @@
       @filter="handleFilter"
     />
 
-    <div v-if="loading" class="loading-grid">
-      <div v-for="i in 6" :key="i" class="skeleton-card">
-        <div class="skeleton skeleton-photo"></div>
-        <div class="skeleton skeleton-title"></div>
-        <div class="skeleton skeleton-line"></div>
-        <div class="skeleton skeleton-line short"></div>
-      </div>
-    </div>
+    <SkeletonGrid v-if="loading" />
 
-    <div v-else-if="error" class="state-card state-error">
-      <span class="state-mark">
-        <AppIcon name="alert" :size="30" />
-      </span>
-      <h3>Terjadi kesalahan</h3>
-      <p>{{ error }}</p>
+    <StateCard
+      v-else-if="error"
+      type="error"
+      icon="alert"
+      title="Terjadi kesalahan"
+      :message="error"
+    >
       <button class="btn-retry" @click="loadKos()">
         <AppIcon name="arrow-right" :size="16" />
         Coba lagi
       </button>
-    </div>
+    </StateCard>
 
     <div v-else-if="kosList.length" class="content">
       <div class="list-wrap">
@@ -79,13 +71,12 @@
       </div>
     </div>
 
-    <div v-else class="state-card state-empty">
-      <span class="state-mark">
-        <AppIcon name="buildings" :size="30" />
-      </span>
-      <h3>Belum ada data kos</h3>
-      <p>Masukkan nama kota lalu klik <strong>Cari</strong> untuk menarik kos-kosan terdekat dari Google Maps.</p>
-    </div>
+    <StateCard
+      v-else
+      icon="buildings"
+      title="Belum ada data kos"
+      message="Masukkan nama kota lalu klik Cari untuk menarik kos-kosan terdekat dari Google Maps."
+    />
   </div>
 </template>
 
@@ -94,6 +85,8 @@ import { ref, computed, onMounted, inject } from 'vue'
 import FilterBar from '../components/FilterBar.vue'
 import KosCard from '../components/KosCard.vue'
 import MapView from '../components/MapView.vue'
+import SkeletonGrid from '../components/SkeletonGrid.vue'
+import StateCard from '../components/StateCard.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { fetchKos, triggerScrape } from '../services/api.js'
 
@@ -113,9 +106,22 @@ const total = ref(0)
 
 const PAGE_SIZE = 20
 
+let requestSeq = 0
+
 const initialCity = props.prefillCity || ''
 
 const activeCity = computed(() => filters.value.city || initialCity || '')
+
+const dashSub = computed(() => {
+  if (loading.value) {
+    return activeCity.value
+      ? `Mencari data untuk ${activeCity.value} dari Google Maps — ini bisa butuh beberapa saat.`
+      : 'Memuat data…'
+  }
+  return activeCity.value
+    ? `Hasil pencarian untuk ${activeCity}`
+    : 'Masukkan kota, lalu tekan cari untuk menarik data dari Google Maps.'
+})
 
 const sourceCounts = computed(() => {
   const counts = { gmaps: 0, osm: 0 }
@@ -131,12 +137,14 @@ function openDetail(id) {
 }
 
 async function loadKos(params = {}, reset = true) {
+  const seq = ++requestSeq
   if (reset) page.value = 0
   loading.value = true
   loadingMore.value = false
   error.value = ''
   try {
     const res = await fetchKos({ ...params, limit: PAGE_SIZE, offset: page.value * PAGE_SIZE })
+    if (seq !== requestSeq) return
     if (reset) {
       kosList.value = res.data
     } else {
@@ -144,9 +152,10 @@ async function loadKos(params = {}, reset = true) {
     }
     total.value = res.total
   } catch (e) {
+    if (seq !== requestSeq) return
     error.value = 'Gagal memuat data: ' + (e.response?.data?.detail || e.message)
   } finally {
-    loading.value = false
+    if (seq === requestSeq) loading.value = false
   }
 }
 
@@ -173,32 +182,39 @@ function handleFilter(params) {
   page.value = 0
   filtering.value = true
   error.value = ''
+  const seq = ++requestSeq
   fetchKos({ ...params, limit: PAGE_SIZE, offset: 0 })
     .then(res => {
+      if (seq !== requestSeq) return
       kosList.value = res.data
       total.value = res.total
     })
     .catch(e => {
+      if (seq !== requestSeq) return
       error.value = 'Gagal memuat data: ' + (e.response?.data?.detail || e.message)
     })
     .finally(() => {
-      filtering.value = false
+      if (seq === requestSeq) filtering.value = false
     })
 }
 
 async function loadMore() {
   if (loadingMore.value) return
+  const seq = ++requestSeq
   loadingMore.value = true
   try {
     const next = page.value + 1
     const res = await fetchKos({ ...filters.value, limit: PAGE_SIZE, offset: next * PAGE_SIZE })
+    if (seq !== requestSeq) return
     kosList.value = kosList.value.concat(res.data)
     total.value = res.total
     page.value = next
   } catch (e) {
-    toast('Gagal memuat lebih banyak: ' + (e.response?.data?.detail || e.message), 'error')
+    if (seq === requestSeq) {
+      toast('Gagal memuat lebih banyak: ' + (e.response?.data?.detail || e.message), 'error')
+    }
   } finally {
-    loadingMore.value = false
+    if (seq === requestSeq) loadingMore.value = false
   }
 }
 
@@ -325,7 +341,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background: rgba(246, 242, 234, 0.4);
+  background: rgba(244, 247, 252, 0.5);
   border-radius: var(--r-lg);
   font-size: 13px;
   font-weight: 600;
@@ -350,100 +366,6 @@ onMounted(() => {
   top: 86px;
   box-shadow: var(--shadow-md);
   border: 1px solid var(--line);
-}
-
-/* ── Skeleton ─────────────────────── */
-.loading-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.skeleton-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  padding-bottom: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.skeleton {
-  border-radius: 8px;
-  background: linear-gradient(90deg, #ece4d4 25%, #f6f2ea 50%, #ece4d4 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-}
-
-.skeleton-photo {
-  height: 120px;
-  border-radius: 0;
-}
-
-.skeleton-title {
-  width: 70%;
-  height: 16px;
-  margin: 6px 18px 0;
-}
-
-.skeleton-line {
-  width: 100%;
-  height: 12px;
-  margin: 0 18px;
-}
-
-.skeleton-line.short {
-  width: 55%;
-}
-
-@keyframes shimmer {
-  to { background-position: -200% 0; }
-}
-
-/* ── State cards ──────────────────── */
-.state-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  padding: 72px 24px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  box-shadow: var(--shadow-sm);
-}
-
-.state-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  margin-bottom: 8px;
-}
-
-.state-card h3 {
-  font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.state-card p {
-  font-size: 14px;
-  color: var(--muted);
-  max-width: 400px;
-  line-height: 1.7;
-}
-
-.state-error p {
-  color: var(--danger);
 }
 
 .btn-retry {
@@ -484,7 +406,7 @@ onMounted(() => {
 }
 
 .btn-load-more:hover {
-  background: #f0d6bd;
+  background: #cfe0fa;
   transform: translateY(-1px);
 }
 
@@ -502,8 +424,7 @@ onMounted(() => {
 }
 
 @media (max-width: 900px) {
-  .content,
-  .loading-grid {
+  .content {
     grid-template-columns: 1fr;
   }
 

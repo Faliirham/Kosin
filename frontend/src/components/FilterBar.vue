@@ -39,6 +39,10 @@
           <span>{{ loading ? 'Mencari…' : 'Cari' }}</span>
         </button>
       </form>
+      <p v-if="loading && city" class="scrape-status">
+        <AppIcon name="compass" :size="13" />
+        Mencari kos di {{ city }}{{ scrapeDistrict ? `, ${scrapeDistrict}` : '' }} — data ditarik langsung dari Google Maps, ini butuh beberapa saat.
+      </p>
     </div>
 
     <div class="divider"></div>
@@ -221,6 +225,20 @@ function resetFilters() {
   background: var(--line);
 }
 
+.scrape-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.scrape-status .icon {
+  flex: 0 0 auto;
+}
+
 .field {
   position: relative;
   display: flex;
@@ -283,7 +301,7 @@ function resetFilters() {
   min-width: 140px;
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238a7c6b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 36px;

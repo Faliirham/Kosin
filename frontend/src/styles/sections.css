@@ -1,0 +1,49 @@
+/* ── Landing section utilities ─────── */
+.section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 96px 20px 60px;
+}
+
+.section-alt {
+  padding-top: 72px;
+}
+
+.section-head {
+  max-width: 620px;
+  margin-bottom: 48px;
+}
+
+.section-head.center {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 3.6vw, 2.7rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+.section-sub {
+  margin-top: 16px;
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: var(--muted);
+  max-width: 52ch;
+  text-wrap: pretty;
+}

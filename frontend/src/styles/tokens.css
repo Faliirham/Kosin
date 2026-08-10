@@ -1,0 +1,44 @@
+:root {
+  --font-display: 'Sora', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --bg: #f4f7fc;
+  --bg-soft: #e8eef7;
+  --surface: #ffffff;
+  --surface-2: #f8fafd;
+
+  --ink: #0f172a;
+  --ink-soft: #334155;
+  --muted: #64748b;
+  --line: #dce4f0;
+  --line-strong: #c4d0e2;
+
+  --accent: #2563eb;
+  --accent-strong: #1d4ed8;
+  --accent-soft: #dbeafe;
+
+  --dark: #0f172a;
+  --dark-2: #1e293b;
+
+  --google: #1a73e8;
+  --osm: #2f7d4f;
+  --danger: #c0392b;
+  --danger-soft: #f9e3df;
+  --success: #2e8b57;
+
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
+  --r-xl: 32px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 14px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 2px 4px rgba(15, 23, 42, 0.05), 0 14px 30px rgba(15, 23, 42, 0.09);
+  --shadow-lg: 0 10px 24px rgba(15, 23, 42, 0.08), 0 28px 56px rgba(15, 23, 42, 0.12);
+  --shadow-accent: 0 10px 24px rgba(37, 99, 235, 0.28);
+  --focus: 0 0 0 3px rgba(37, 99, 235, 0.3);
+
+  --z-header: 100;
+  --z-toast: 400;
+  --z-grain: 300;
+  --z-skip: 500;
+}

@@ -1,5 +1,12 @@
 <template>
-  <article class="kos-card" @click="$emit('click')">
+  <article
+    class="kos-card"
+    role="button"
+    tabindex="0"
+    @click="$emit('click')"
+    @keydown.enter="$emit('click')"
+    @keydown.space.prevent="$emit('click')"
+  >
     <div class="card-photo">
       <img
         v-if="hasPhoto && !photoFailed"
@@ -56,13 +63,14 @@
 <script setup>
 import { ref, computed } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { isHttpUrl } from '../services/api.js'
 
 const props = defineProps({ kos: Object })
 defineEmits(['click'])
 
 const photoFailed = ref(false)
 
-const hasPhoto = computed(() => !!(props.kos.photos && props.kos.photos.length))
+const hasPhoto = computed(() => isHttpUrl(props.kos.photos?.[0]))
 
 const initial = computed(() => (props.kos.name || '?').trim().charAt(0).toUpperCase())
 
@@ -87,11 +95,16 @@ const shortDistrict = computed(() => {
 .kos-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
-  border-color: rgba(200, 83, 27, 0.35);
+  border-color: rgba(37, 99, 235, 0.35);
 }
 
 .kos-card:active {
   transform: translateY(-2px) scale(0.995);
+}
+
+.kos-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* ── Photo ────────────────────────── */
@@ -119,9 +132,9 @@ const shortDistrict = computed(() => {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(80% 120% at 85% 0%, rgba(200, 83, 27, 0.22), transparent 60%),
-    radial-gradient(70% 110% at 10% 100%, rgba(224, 161, 27, 0.2), transparent 60%),
-    linear-gradient(120deg, #2c241a, #3a2f22);
+    radial-gradient(80% 120% at 85% 0%, rgba(37, 99, 235, 0.28), transparent 60%),
+    radial-gradient(70% 110% at 10% 100%, rgba(96, 165, 250, 0.2), transparent 60%),
+    linear-gradient(120deg, #1e293b, #334155);
 }
 
 .fallback-mark {
@@ -143,7 +156,7 @@ const shortDistrict = computed(() => {
 .photo-shade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(22, 16, 10, 0.55), transparent 55%);
+  background: linear-gradient(to top, rgba(15, 23, 42, 0.55), transparent 55%);
   pointer-events: none;
 }
 
@@ -154,10 +167,10 @@ const shortDistrict = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(20, 15, 10, 0.72);
+  background: rgba(15, 23, 42, 0.78);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  color: #ffd66b;
+  color: #bfdbfe;
   font-size: 13px;
   font-weight: 800;
   padding: 5px 11px;
@@ -208,7 +221,7 @@ const shortDistrict = computed(() => {
   width: 30px;
   height: 30px;
   border-radius: 10px;
-  background: rgba(20, 15, 10, 0.5);
+  background: rgba(15, 23, 42, 0.55);
   color: #fff;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -286,13 +299,13 @@ const shortDistrict = computed(() => {
 }
 
 .chip-city {
-  background: #efe9dc;
+  background: var(--bg-soft);
   color: var(--ink-soft);
 }
 
 .chip-district {
-  background: var(--gold-soft);
-  color: #8f6410;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .chip-na {
