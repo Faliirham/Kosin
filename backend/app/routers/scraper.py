@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.models import Kos
-from app.schemas import ScrapeRequest, ScrapeResponse
+from app.schemas import AreaCount, ScrapeRequest, ScrapeResponse
 from app.scraper import scrape_kos
 
 router = APIRouter(prefix="/api", tags=["Scraper"])
@@ -27,7 +27,14 @@ async def trigger_scrape(req: ScrapeRequest, db: AsyncSession = Depends(get_db))
 
     new_count = 0
     updated_count = 0
+    areas: dict[str, int] = {}
+    seen_areas: set[str] = set()
     for kos_data in results:
+        area_key = kos_data.place_id or f"{kos_data.name}|{kos_data.address}"
+        if area_key not in seen_areas:
+            seen_areas.add(area_key)
+            if kos_data.district:
+                areas[kos_data.district] = areas.get(kos_data.district, 0) + 1
         existing = None
         if kos_data.place_id:
             result = await db.execute(select(Kos).where(Kos.place_id == kos_data.place_id))
@@ -51,4 +58,12 @@ async def trigger_scrape(req: ScrapeRequest, db: AsyncSession = Depends(get_db))
         new_count += 1
 
     await db.commit()
-    return ScrapeResponse(message="Scrape selesai", total_scraped=new_count)
+    area_list = [
+        AreaCount(district=district, count=count)
+        for district, count in sorted(areas.items(), key=lambda item: -item[1])[:12]
+    ]
+    return ScrapeResponse(
+        message="Scrape selesai",
+        total_scraped=new_count,
+        areas=area_list,
+    )

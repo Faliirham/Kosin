@@ -24,6 +24,12 @@ USER_AGENT = "KosFinder/1.0 (kos-kosan search; geocode fallback)"
 DEFAULT_RADIUS_KM = 12.0
 EARTH_RADIUS_KM = 6371.0
 
+# Grid area scraping: kota dipecah menjadi NxN sel dan keyword dijalankan per
+# sel, sehingga area pinggiran ikut terjangkau. Default 2x2 = 4 query per scrape
+# (~$0.13, masih jauh di bawah free credit Google $200/bulan).
+GRID_SIZE = int(os.getenv("SCRAPE_GRID_SIZE", "2"))
+MIN_GRID_SPAN = 0.05  # kota dengan span lebih kecil tidak perlu dipecah
+
 # Fallback koordinat kota umum (dipakai saat Google Geocoding belum aktif/billing off)
 CITY_FALLBACK = {
     "bandung": {"lat": -6.9175, "lng": 107.6191},
@@ -62,6 +68,27 @@ def _bounds_around(center: dict, radius_km: float) -> dict:
         "west": center["lng"] - lng_d,
         "east": center["lng"] + lng_d,
     }
+
+
+def split_bounds(bounds: dict, grid_size: int) -> list[dict]:
+    """Pecah bounding box menjadi `grid_size` x `grid_size` sel penelusuran."""
+    n = max(1, int(grid_size))
+    if n == 1:
+        return [dict(bounds)]
+    lat_step = (bounds["north"] - bounds["south"]) / n
+    lng_step = (bounds["east"] - bounds["west"]) / n
+    cells = []
+    for i in range(n):
+        for j in range(n):
+            cells.append(
+                {
+                    "south": bounds["south"] + i * lat_step,
+                    "north": bounds["south"] + (i + 1) * lat_step,
+                    "west": bounds["west"] + j * lng_step,
+                    "east": bounds["west"] + (j + 1) * lng_step,
+                }
+            )
+    return cells
 
 
 def _extract_city(address: str | None, fallback: str) -> str:
@@ -204,12 +231,20 @@ async def scrape_kos(
     lng: float | None = None,
     radius_km: float | None = None,
 ) -> list[KosCreate]:
-    """Scrape kos-kosan murni via Google Places API dengan pembatas lokasi kota/kecamatan."""
+    """Scrape kos-kosan via Google Places API dengan pembatas lokasi kota/kecamatan.
+
+    Mode kota (tanpa lat/lng): bounding box kota dipecah menjadi sel-sel grid
+    (default 2x2) dan keyword dijalankan per sel, sehingga area pinggiran kota
+    ikut terjangkau. Hasil antar sel di-deduplikasi berdasarkan `place_id`.
+    Mode manual (lat/lng + radius_km): satu pencarian berpusat di koordinat,
+    dengan filter jarak radius seperti sebelumnya.
+    """
     radius = radius_km or DEFAULT_RADIUS_KM
     location_query = f"{district}, {city}" if district else city
+    direct_mode = lat is not None and lng is not None
 
     async with httpx.AsyncClient() as client:
-        if lat is not None and lng is not None:
+        if direct_mode:
             center = {"lat": lat, "lng": lng}
             bounds = _bounds_around(center, radius)
         else:
@@ -219,29 +254,64 @@ async def scrape_kos(
             center = geo["center"]
             bounds = geo["bounds"]
 
-        found = await places.search_places(client, location_query, keyword, bounds=bounds)
-        if not found:
+        grid = 1
+        if not direct_mode:
+            span = max(
+                bounds["north"] - bounds["south"],
+                bounds["east"] - bounds["west"],
+            )
+            grid = 1 if span < MIN_GRID_SPAN else min(GRID_SIZE, 3)
+        cells = split_bounds(bounds, grid)
+
+        deduped: dict = {}
+        for idx, cell in enumerate(cells, start=1):
+            found = await places.search_places(client, location_query, keyword, bounds=cell)
+            for place in found:
+                key = place.get("place_id") or (
+                    place.get("name"),
+                    place.get("address"),
+                )
+                if key in deduped:
+                    continue
+                deduped[key] = place
+            logger.info(
+                "Grid scrape %s: sel %d/%d (%d raw, %d unik kumulatif)",
+                location_query,
+                idx,
+                len(cells),
+                len(found),
+                len(deduped),
+            )
+
+        if not deduped:
             logger.warning("Google Places tidak menemukan hasil untuk %s", location_query)
             return []
 
-        results = [_place_to_kos(p, city) for p in found]
-        filtered = []
-        dropped = 0
-        for kos in results:
-            if (
-                kos.latitude is not None
-                and kos.longitude is not None
-                and _haversine_km(kos.latitude, kos.longitude, center["lat"], center["lng"]) > radius
-            ):
-                dropped += 1
-                continue
-            filtered.append(kos)
+        results = [_place_to_kos(p, city) for p in deduped.values()]
 
-        if dropped:
-            logger.info("Dropped %d hasil di luar radius %s km dari %s", dropped, radius, city)
+        if direct_mode:
+            filtered = []
+            dropped = 0
+            for kos in results:
+                if (
+                    kos.latitude is not None
+                    and kos.longitude is not None
+                    and _haversine_km(kos.latitude, kos.longitude, center["lat"], center["lng"]) > radius
+                ):
+                    dropped += 1
+                    continue
+                filtered.append(kos)
+            if dropped:
+                logger.info("Dropped %d hasil di luar radius %s km dari %s", dropped, radius, city)
+            results = filtered
 
-        logger.info("Scrape %s via Google Places: %d hasil (radius %s km)", city, len(filtered), radius)
-        return filtered
+        logger.info(
+            "Scrape %s via Google Places: %d hasil unik (%s sel grid)",
+            location_query,
+            len(results),
+            len(cells),
+        )
+        return results
 
 
 async def _main() -> None:

@@ -43,9 +43,15 @@ class ScrapeRequest(BaseModel):
     radius_km: Optional[float] = None
 
 
+class AreaCount(BaseModel):
+    district: str
+    count: int
+
+
 class ScrapeResponse(BaseModel):
     message: str
     total_scraped: int
+    areas: list[AreaCount] = []
 
 
 class PaginatedKos(BaseModel):
