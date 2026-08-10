@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.database import engine
 from app.models import Base
@@ -11,6 +12,9 @@ from app.routers import scraper, kos
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS place_id VARCHAR(255)"))
+        await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS source VARCHAR(20)"))
+        await conn.execute(text("UPDATE kos SET source = 'osm' WHERE source IS NULL"))
     yield
     await engine.dispose()
 

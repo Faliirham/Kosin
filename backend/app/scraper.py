@@ -1,10 +1,16 @@
 import asyncio
 import logging
 import os
+import sys
+from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
 
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from app import places
 from app.schemas import KosCreate
 
 load_dotenv()
@@ -87,7 +93,7 @@ async def _query_overpass(client: httpx.AsyncClient, query: str) -> list[dict]:
     raise RuntimeError(f"Semua endpoint Overpass gagal: {last_error}")
 
 
-def _osm_element_to_kos(el: dict, city: str) -> KosCreate:
+def _osm_element_to_kos(el: dict, city: str) -> KosCreate | None:
     tags = el.get("tags", {})
     name = tags.get("name", "")
     if not name:
@@ -116,6 +122,7 @@ def _osm_element_to_kos(el: dict, city: str) -> KosCreate:
 
     return KosCreate(
         name=name,
+        source="osm",
         address=address,
         city=tags.get("addr:city", city),
         latitude=lat,
@@ -169,7 +176,46 @@ def _mock_data(city: str) -> list[KosCreate]:
     ]
 
 
-async def scrape_kos(city: str, keyword: str = "kos kosan") -> list[KosCreate]:
+def _place_to_kos(place: dict, city: str) -> KosCreate:
+    """Normalisasi hasil Google Places (search/details) -> KosCreate."""
+    return KosCreate(
+        name=place.get("name") or "Tanpa Nama",
+        place_id=place.get("place_id"),
+        source="gmaps",
+        address=place.get("address"),
+        city=city,
+        latitude=place.get("latitude"),
+        longitude=place.get("longitude"),
+        rating=place.get("rating"),
+        total_reviews=place.get("total_reviews"),
+        phone=place.get("phone"),
+        website=place.get("website"),
+        opening_hours=place.get("opening_hours"),
+        price_range=places.price_level_to_range(place.get("price_level")),
+        photos=place.get("photos"),
+        google_maps_url=place.get("google_maps_url"),
+    )
+
+
+async def _scrape_gmaps(city: str, keyword: str) -> list[KosCreate] | None:
+    """Scrape via Google Places API. Return None jika tidak tersedia/gagal."""
+    if not places.API_KEY or places.API_KEY == "your_api_key_here":
+        return None
+
+    try:
+        async with httpx.AsyncClient() as client:
+            found = await places.search_places(client, city, keyword)
+            if not found:
+                logger.warning("Google Places tidak menemukan hasil untuk %s", city)
+                return None
+            return [_place_to_kos(p, city) for p in found]
+    except (httpx.HTTPError, RuntimeError) as e:
+        logger.error("Google Places gagal (%s), fallback OSM: %s", city, e)
+        return None
+
+
+async def _scrape_osm(city: str) -> list[KosCreate]:
+    """Scrape via OpenStreetMap (Nominatim + Overpass), fallback mock."""
     try:
         async with httpx.AsyncClient() as client:
             geo = await _geocode_city(client, city)
@@ -197,5 +243,29 @@ async def scrape_kos(city: str, keyword: str = "kos kosan") -> list[KosCreate]:
                 return _mock_data(city)
             return results
     except (httpx.HTTPError, RuntimeError) as e:
-        logger.error("Scraper gagal (%s), fallback mock: %s", city, e)
+        logger.error("Scraper OSM gagal (%s), fallback mock: %s", city, e)
         return _mock_data(city)
+
+
+async def scrape_kos(city: str, keyword: str = "kos kosan") -> list[KosCreate]:
+    """Scrape kos-kosan: Google Places utama -> OSM -> mock."""
+    gmaps = await _scrape_gmaps(city, keyword)
+    if gmaps:
+        logger.info("Scrape %s via Google Places: %d hasil", city, len(gmaps))
+        return gmaps
+    return await _scrape_osm(city)
+
+
+async def _main() -> None:
+    city = sys.argv[1] if len(sys.argv) > 1 else "Bandung"
+    results = await scrape_kos(city)
+    print(f"\nDitemukan {len(results)} kos di {city}:")
+    for kos in results[:10]:
+        print(f"  - {kos.name} ({kos.city})")
+    if len(results) > 10:
+        print(f"  ... dan {len(results) - 10} lainnya")
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    asyncio.run(_main())

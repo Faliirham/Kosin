@@ -13,6 +13,8 @@ class Kos(Base):
     __tablename__ = "kos"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    place_id = Column(String(255), nullable=True, index=True)
+    source = Column(String(20), nullable=True, default="osm", index=True)
     name = Column(String(255), nullable=False)
     address = Column(Text, nullable=True)
     city = Column(String(100), nullable=True)
