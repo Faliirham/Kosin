@@ -96,7 +96,16 @@ async function stubApi(page, options = {}) {
     items = SAMPLE_KOS,
     scrapeDelay = 0,
     scrapeStatus = 200,
-    scrapeResponse = { message: 'Scrape selesai', total_scraped: 2 },
+    scrapeResponse = {
+      message: 'Scrape selesai',
+      total_scraped: 2,
+      areas: [
+        { district: 'Kec. Coblong', count: 16 },
+        { district: 'Kec. Cicendo', count: 5 },
+        { district: 'Kec. Lengkong', count: 4 },
+        { district: 'Kec. Antapani', count: 3 },
+      ],
+    },
   } = options
 
   // Google Maps JS can't load in CI/headless — abort it so the map shows its
@@ -203,6 +212,14 @@ test.describe('scrape flow keeps results visible (no desktop/mobile drift)', () 
     // Once the scrape finishes, the overlay clears and cards stay.
     await expect(overlay).toHaveCount(0, { timeout: 15_000 })
     await expect(cards).toHaveCount(6)
+
+    // Area breakdown from the scrape response is shown as chips.
+    const areaBar = page.locator('.area-bar')
+    await expect(areaBar).toBeVisible()
+    await expect(areaBar).toContainText('4 area ditemukan')
+    await expect(areaBar.locator('.area-chip')).toHaveCount(4)
+    await expect(areaBar.locator('.area-chip').first()).toContainText('Coblong')
+    await expect(areaBar.locator('.area-chip').first()).toContainText('16')
   })
 
   test('scrape fails with no existing data: shows the error state card', async ({ page }) => {
@@ -214,6 +231,17 @@ test.describe('scrape flow keeps results visible (no desktop/mobile drift)', () 
     await expect(page.locator('.state-error')).toBeVisible({ timeout: 15_000 })
     await expect(page.locator('.state-error')).toContainText('Terjadi kesalahan')
     await expect(page.locator('.state-error')).toContainText('Coba lagi')
+  })
+
+  test('scrape response without areas: no area bar rendered (backward compatible)', async ({ page }) => {
+    test.setTimeout(30_000)
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await stubApi(page, { scrapeResponse: { message: 'Scrape selesai', total_scraped: 0 } })
+    await page.goto('/#/dashboard?city=Bandung')
+
+    await expect(page.locator('.kos-card').first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('.list-overlay')).toHaveCount(0, { timeout: 15_000 })
+    await expect(page.locator('.area-bar')).toHaveCount(0)
   })
 
   test('scrape fails with existing data: keeps the cards and toasts the error', async ({ page }) => {

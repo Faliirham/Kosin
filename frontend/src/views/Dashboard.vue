@@ -32,6 +32,17 @@
       @filter="handleFilter"
     />
 
+    <div v-if="scrapeAreas.length && !loading && !scraping" class="area-bar">
+      <span class="area-bar-label">
+        <AppIcon name="map-pin" :size="13" />
+        {{ scrapeAreas.length }} area ditemukan
+      </span>
+      <span v-for="area in scrapeAreas" :key="area.district" class="area-chip">
+        <span class="area-chip-name">{{ shortDistrict(area.district) }}</span>
+        <span class="area-chip-count">{{ area.count }}</span>
+      </span>
+    </div>
+
     <SkeletonGrid v-if="loading || (scraping && !kosList.length)" />
 
     <StateCard
@@ -106,6 +117,7 @@ const loadingMore = ref(false)
 const filtering = ref(false)
 const scraping = ref(false)
 const scrapingCity = ref('')
+const scrapeAreas = ref([])
 const error = ref('')
 const filters = ref({})
 const page = ref(0)
@@ -140,6 +152,10 @@ const sourceCounts = computed(() => {
   return counts
 })
 
+function shortDistrict(d) {
+  return (d || '').replace(/^Kec\.\s*/i, '')
+}
+
 function openDetail(id) {
   navigate('detail', { id })
 }
@@ -171,6 +187,7 @@ async function handleScrape({ city, keyword, district }) {
   const myScrape = ++scrapeSeq
   scraping.value = true
   scrapingCity.value = city
+  scrapeAreas.value = []
   error.value = ''
 
   const params = { city, district: district || undefined }
@@ -184,6 +201,7 @@ async function handleScrape({ city, keyword, district }) {
     if (myScrape !== scrapeSeq) return
 
     if (scrapeRes.status === 'fulfilled') {
+      scrapeAreas.value = scrapeRes.value?.areas || []
       filters.value = {
         ...filters.value,
         city,
@@ -335,6 +353,61 @@ onBeforeUnmount(() => {
   font-size: 11px;
   color: var(--muted);
   font-weight: 600;
+}
+
+/* ── Area bar ─────────────────────── */
+.area-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+  padding: 10px 14px;
+}
+
+.area-bar-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-right: 4px;
+}
+
+.area-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.area-chip-name {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.area-chip-count {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 11px;
 }
 
 /* ── Content ──────────────────────── */

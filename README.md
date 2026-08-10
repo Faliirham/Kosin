@@ -37,6 +37,8 @@ Sebuah full-stack web application yang mencari kos-kosan via **Google Places API
 | Fitur | Deskripsi |
 |-------|-----------|
 | 🔍 **Scraping Otomatis** | Mengambil data kos-kosan via **Google Places API** (utama) dengan fallback OpenStreetMap |
+| 🗺️ **Area Coverage** | Kota dipecah menjadi **grid area (N×N sel, default 2×2)** dan keyword dicari per sel — area pinggiran ikut terjangkau, hasil unik di-dedup per `place_id`; hasil banding rasio kota kecil: 60 → 100+ per kota |
+| 🏘️ **Breakdown Kecamatan** | Response scrape menyertakan ringkasan jumlah kos per kecamatan; dashboard menampilkan chip area temuan |
 | ⭐ **Data Kaya Rating** | Rating, jumlah ulasan, telepon, website, jam buka, & rentang harga dari Google |
 | 📸 **Live Photo Fetch** | Foto kos di-resolve real-time dengan cache ≤ 24 jam (sesuai ToS Google) |
 | 🗺️ **Map View** | Visualisasi lokasi kos-kosan menggunakan Google Maps JavaScript API |
@@ -243,6 +245,7 @@ cp .env.example .env
 |----------|-----------|--------|
 | `DATABASE_URL` | Koneksi PostgreSQL | `postgresql+asyncpg://postgres:admin@localhost:5432/kos_finder` |
 | `GOOGLE_MAPS_API_KEY` | API key Google Places & Geocoding (server-side only!) | `AIza...` |
+| `SCRAPE_GRID_SIZE` | Pecah kota menjadi **N×N sel area** dan cari per sel agar area pinggiran ikut terjangkau (default `2` → 4 query; opsional `3` → 9 query). Mode `lat/lng` manual tidak terpengaruh. | `2` |
 
 ### Frontend Environment (`frontend/.env`)
 
@@ -343,11 +346,17 @@ POST /api/scrape
 ```json
 {
   "message": "Scrape selesai",
-  "total_scraped": 25
+  "total_scraped": 25,
+  "areas": [
+    { "district": "Kec. Cibeunying Kidul", "count": 16 },
+    { "district": "Kec. Panyileukan", "count": 7 }
+  ]
 }
 ```
 
 > 💡 `total_scraped` = jumlah baris **baru** yang diinsert. Data yang sudah ada (match `place_id`) otomatis di-**refresh** field-nya, tidak dihitung sebagai baris baru.
+>
+> 🗺️ **Grid area**: saat scrape tanpa `lat/lng`, bounding box kota dipecah jadi N×N sel (`SCRAPE_GRID_SIZE`, default 2×2 = 4 query). Tiap sel memakai `locationRestriction` sendiri sehingga area pinggiran ikut ter-scrape; hasil antar sel di-deduplikasi (`place_id`), dan filter radius 12 km tidak berlaku di mode ini. `areas` = top 12 kecamatan berdasarkan jumlah hasil unik.
 
 ---
 
@@ -490,6 +499,7 @@ Test meng-stub API (tanpa backend/PostgreSQL/Google) dan memverifikasi: kartu ko
 - [x] UI modern & responsif (skeleton loading, toast, badges sumber data)
 - [x] Filter kota & kecamatan (scrape + list), kolom `district` di database
 - [x] Refresh data otomatis saat re-scrape (update field yang sudah ada, bukan skip)
+- [x] Scrape grid area (N×N sel, default 2×2) + breakdown kecamatan di response & UI
 - [x] Ekstraksi kota/kecamatan dari alamat (anti-pencemaran oleh token jalan)
 - [x] Geocode fallback Nominatim + tabel kota umum saat billing Google nonaktif
 
