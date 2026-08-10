@@ -445,7 +445,9 @@ cd frontend
 npm run test:e2e   # Playwright — render desktop (1280px) & mobile (390px), alur scrape
 ```
 
-Test meng-stub API (tanpa backend/PostgreSQL/Google) dan memverifikasi: kartu kos lengkap (foto, badge sumber, rating, alamat, chip kota/kecamatan) muncul di kedua breakpoint; skeleton hilang setelah load selesai; hasil lama tetap tampil saat scrape berjalan maupun gagal.
+Test meng-stub API (tanpa backend/PostgreSQL/Google) dan memverifikasi: kartu kos lengkap (foto, badge sumber, rating, alamat, chip kota/kecamatan) muncul di kedua breakpoint; skeleton hilang setelah load selesai; hasil lama tetap tampil saat scrape berjalan maupun gagal; dan tinggi kartu tidak pernah menyusut (regression guard `> 150px`).
+
+> 🛡️ **Guard regresi kartu menyusut**: daftar hasil memakai CSS Grid 1 kolom (bukan flexbox) dengan `max-height: 76vh` + scroll — grid row bersifat *auto-sized* sehingga kartu **tidak bisa** di-squeeze seperti bug lama flexbox (`flex-shrink: 1` + `overflow: hidden` pada kartu membuat kartu kolaps beberapa piksel di layar lebar). Verifikasi disebutkan di atas dipakai untuk mencegah regresi ini di semua breakpoint.
 
 ---
 
