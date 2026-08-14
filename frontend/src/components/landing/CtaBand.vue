@@ -67,7 +67,7 @@ defineEmits(['go-city'])
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   border: none;
   font-size: 16px;

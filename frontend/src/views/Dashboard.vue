@@ -17,8 +17,8 @@
           <span class="dash-stat-label">Google Maps</span>
         </div>
         <div class="dash-stat">
-          <span class="dash-stat-num dash-stat-osm">{{ sourceCounts.osm }}</span>
-          <span class="dash-stat-label">OpenStreetMap</span>
+          <span class="dash-stat-num dash-stat-rating">{{ avgRating }}</span>
+          <span class="dash-stat-label">rata-rata rating</span>
         </div>
       </div>
     </div>
@@ -138,18 +138,31 @@ const dashSub = computed(() => {
       ? `Mencari data untuk ${activeCity.value} dari Google Maps — ini bisa butuh beberapa saat.`
       : 'Memuat data…'
   }
-  return activeCity.value
-    ? `Hasil pencarian untuk ${activeCity}`
-    : 'Masukkan kota, lalu tekan cari untuk menarik data dari Google Maps.'
+
+  if (activeCity.value) {
+    return `Hasil pencarian untuk ${activeCity.value}`
+  }
+
+  if (kosList.value.length > 0) {
+    return `Menampilkan ${total.value} kos dari ${kosList.value.length} yang tersedia`
+  }
+
+  return 'Masukkan nama kota, lalu tekan Cari untuk menarik data dari Google Maps.'
 })
 
 const sourceCounts = computed(() => {
-  const counts = { gmaps: 0, osm: 0 }
+  const counts = { gmaps: 0 }
   kosList.value.forEach(k => {
-    const key = k.source === 'gmaps' ? 'gmaps' : 'osm'
-    counts[key] += 1
+    if (k.source === 'gmaps') counts.gmaps += 1
   })
   return counts
+})
+
+const avgRating = computed(() => {
+  const rated = kosList.value.filter(k => k.rating)
+  if (!rated.length) return '—'
+  const avg = rated.reduce((sum, k) => sum + k.rating, 0) / rated.length
+  return avg.toFixed(1).replace('.', ',')
 })
 
 function shortDistrict(d) {
@@ -347,7 +360,7 @@ onBeforeUnmount(() => {
 }
 
 .dash-stat-gmaps { color: var(--google); }
-.dash-stat-osm { color: var(--osm); }
+.dash-stat-rating { color: var(--accent); }
 
 .dash-stat-label {
   font-size: 11px;
@@ -447,7 +460,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background: rgba(244, 247, 252, 0.5);
+  background: var(--overlay);
   border-radius: var(--r-lg);
   font-size: 13px;
   font-weight: 600;
@@ -512,7 +525,7 @@ onBeforeUnmount(() => {
 }
 
 .btn-load-more:hover {
-  background: #cfe0fa;
+  background: var(--accent-soft-strong);
   transform: translateY(-1px);
 }
 

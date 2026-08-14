@@ -161,7 +161,7 @@ onMounted(() => loadDetail())
 }
 
 .chip-price {
-  background: #e8f2ec;
+  background: var(--success-soft);
   color: var(--success);
 }
 
@@ -189,7 +189,7 @@ onMounted(() => loadDetail())
 
 .skeleton {
   border-radius: 8px;
-  background: linear-gradient(90deg, #dbe4f0 25%, #eef3fa 50%, #dbe4f0 75%);
+  background: var(--skeleton);
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
 }

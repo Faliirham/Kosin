@@ -95,7 +95,7 @@ const shortDistrict = computed(() => {
 .kos-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
-  border-color: rgba(37, 99, 235, 0.35);
+  border-color: var(--accent-border);
 }
 
 .kos-card:active {
@@ -110,7 +110,7 @@ const shortDistrict = computed(() => {
 /* ── Photo ────────────────────────── */
 .card-photo {
   position: relative;
-  height: 130px;
+  height: 150px;
   overflow: hidden;
 }
 

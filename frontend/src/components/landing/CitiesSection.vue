@@ -65,7 +65,7 @@ const cityCards = [
 .city-card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-md);
-  border-color: rgba(37, 99, 235, 0.4);
+  border-color: var(--accent-border);
 }
 
 .city-icon {

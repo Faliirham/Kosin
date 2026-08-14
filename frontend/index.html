@@ -15,6 +15,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Sora:wght@300..800&display=swap" rel="stylesheet" />
   <title>Kos Finder — Temukan kos yang terasa seperti rumah</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('kos-theme')
+        if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        document.documentElement.setAttribute('data-theme', t)
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#0b1220' : '#0f172a')
+      } catch (e) {}
+    })()
+  </script>
 </head>
 <body>
   <div id="app"></div>

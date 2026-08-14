@@ -10,8 +10,8 @@
     <div class="hero-inner">
       <div class="hero-copy">
         <span class="hero-badge">
-          <AppIcon name="sparkle" :size="15" />
-          Data langsung dari Google Maps &amp; OpenStreetMap
+          <AppIcon name="map-pin" :size="14" />
+          Data langsung dari Google Maps
         </span>
 
         <h1 class="hero-title">
@@ -383,11 +383,12 @@ function submitSearch() {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   border-radius: 16px;
   padding: 14px 18px;
   box-shadow: var(--shadow-lg);
+  border: 1px solid var(--line);
 }
 
 .float-card strong {

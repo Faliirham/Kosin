@@ -250,9 +250,9 @@ async function doDelete() {
 }
 
 .btn-delete {
-  background: #fff;
+  background: var(--surface);
   color: var(--danger);
-  border: 1px solid rgba(192, 57, 43, 0.4);
+  border: 1px solid var(--danger-soft);
 }
 
 .btn-delete:hover {
@@ -287,7 +287,7 @@ async function doDelete() {
 }
 
 .btn-confirm-yes:hover {
-  background: #a93226;
+  background: var(--danger-strong);
   transform: translateY(-1px);
 }
 

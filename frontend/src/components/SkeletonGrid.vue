@@ -33,13 +33,13 @@ defineProps({ count: { type: Number, default: 6 } })
 
 .skeleton {
   border-radius: 8px;
-  background: linear-gradient(90deg, #dbe4f0 25%, #eef3fa 50%, #dbe4f0 75%);
+  background: var(--skeleton);
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
 }
 
 .skeleton-photo {
-  height: 120px;
+  height: 150px;
   border-radius: 0;
 }
 

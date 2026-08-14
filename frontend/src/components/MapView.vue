@@ -32,8 +32,15 @@ const markerCount = ref(0)
 let googleMaps = null
 let map = null
 let markersLayer = []
+let themeObserver = null
 
 const DEFAULT_CENTER = { lat: -6.9175, lng: 107.6191 }
+
+function mapBgColor() {
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue('--map-bg')
+    .trim() || '#e8eef7'
+}
 
 const PIN_SVG =
   'data:image/svg+xml;charset=utf-8,' +
@@ -58,9 +65,13 @@ async function initMap() {
       center: DEFAULT_CENTER,
       zoom: 11,
       mapId: undefined,
-      backgroundColor: '#e8eef7',
+      backgroundColor: mapBgColor(),
     })
     mapReady.value = true
+    themeObserver = new MutationObserver(() => {
+      if (map) map.setOptions({ backgroundColor: mapBgColor() })
+    })
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
     updateMarkers()
   } catch (e) {
     console.error('Gagal memuat Google Maps:', e)
@@ -83,13 +94,13 @@ function popupHtml(m) {
       ${link}
     </div>
     <style>
-      .kp-wrap { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; min-width: 180px; }
-      .kp-name { font-weight: 700; font-size: 13.5px; color: #0f172a; margin-bottom: 4px; line-height: 1.35; }
+      .kp-wrap { font-family: var(--font-body); min-width: 180px; }
+      .kp-name { font-weight: 700; font-size: 13.5px; color: var(--ink); margin-bottom: 4px; line-height: 1.35; }
       .kp-meta { margin-bottom: 3px; }
-      .kp-rating { color: #2563eb; font-weight: 700; font-size: 12.5px; }
-      .kp-na { color: #64748b; font-size: 12px; }
-      .kp-addr { font-size: 11.5px; color: #64748b; line-height: 1.5; margin-bottom: 6px; }
-      .kp-link { display: inline-block; color: #2563eb; font-weight: 700; font-size: 12px; text-decoration: none; }
+      .kp-rating { color: var(--accent); font-weight: 700; font-size: 12.5px; }
+      .kp-na { color: var(--muted); font-size: 12px; }
+      .kp-addr { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin-bottom: 6px; }
+      .kp-link { display: inline-block; color: var(--accent); font-weight: 700; font-size: 12px; text-decoration: none; }
       .kp-link:hover { text-decoration: underline; }
     </style>`
 }
@@ -131,6 +142,7 @@ onMounted(initMap)
 watch(() => props.markers, () => updateMarkers(), { deep: true })
 
 onBeforeUnmount(() => {
+  if (themeObserver) themeObserver.disconnect()
   markersLayer.forEach(m => m.setMap(null))
   markersLayer = []
   map = null
@@ -177,7 +189,7 @@ onBeforeUnmount(() => {
 }
 
 .map-empty {
-  background: rgba(244, 247, 252, 0.85);
+  background: var(--overlay);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   pointer-events: none;
