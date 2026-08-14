@@ -25,6 +25,7 @@ Sebuah full-stack web application yang mencari kos-kosan via **Google Places API
 - [Instalasi](#-instalasi)
 - [Konfigurasi](#-konfigurasi)
 - [Menjalankan Aplikasi](#-menjalankan-aplikasi)
+- [Testing](#-testing)
 - [API Reference](#-api-reference)
 - [Data Model](#-data-model)
 - [Roadmap](#-roadmap)
@@ -104,19 +105,41 @@ kosin/
 │   │       ├── __init__.py
 │   │       ├── scraper.py           # POST /api/scrape
 │   │       └── kos.py               # GET/DELETE /api/kos
+│   ├── tests/                       # Unit test backend (pytest)
+│   │   ├── test_places.py           # Price level, normalisasi place, TTL cache, details/photos
+│   │   └── test_scraper.py          # Haversine, grid bounds, ekstraksi kota/kecamatan, fallback geocode
+│   ├── pytest.ini                   # Konfigurasi pytest (asyncio mode auto)
+│   ├── requirements.txt             # Dependencies Python (runtime)
+│   ├── requirements-dev.txt         # Dependencies pengembangan (+ pytest)
 │   ├── .env                         # Environment variables (jangan di-commit!)
-│   └── requirements.txt             # Dependencies Python
+│   └── .env.example
 │
 ├── frontend/                        # Vue 3 frontend
 │   ├── index.html
 │   ├── package.json
 │   ├── vite.config.js               # Konfigurasi Vite + proxy /api
+│   ├── vitest.config.js             # Konfigurasi unit test (Vitest + jsdom)
+│   ├── playwright.config.js         # Konfigurasi e2e (Playwright, webServer vite)
+│   ├── tests/                       # Semua file test — terpisah dari kode aplikasi
+│   │   ├── unit/                    # Unit test (Vitest)
+│   │   │   ├── api.test.js          # Client API (mock axios)
+│   │   │   ├── theme.test.js        # Dark/light mode
+│   │   │   ├── AppIcon.test.js      # Rendering ikon SVG
+│   │   │   ├── KosCard.test.js      # Kartu kos (badge, chip, fallback foto)
+│   │   │   └── FilterBar.test.js    # Emits + debounce pencarian
+│   │   └── e2e/                     # Test end-to-end (Playwright)
+│   │       ├── dashboard.spec.js    # Render kartu desktop/mobile, alur scrape, error state
+│   │       ├── theme.spec.js        # Toggle dark mode, persist, reload
+│   │       ├── icons.spec.js        # Render ikon + lebar select di light & dark
+│   │       └── chevron.spec.js      # Chevron select ikut tema
 │   └── src/
 │       ├── main.js                  # Vue app bootstrap
 │       ├── App.vue                  # Root component + routing sederhana
 │       ├── services/
-│       │   └── api.js               # Axios client ke backend
+│       │   ├── api.js               # Axios client ke backend
+│       │   └── theme.js             # Dark/light mode (sistem + manual, persist localStorage)
 │       ├── components/
+│       │   ├── AppIcon.vue          # SVG icon set
 │       │   ├── FilterBar.vue        # Form scrape + filter/sort
 │       │   ├── KosCard.vue          # Kartu ringkasan kos
 │       │   └── MapView.vue          # Peta Google Maps dengan markers
@@ -447,16 +470,79 @@ DELETE /api/kos/{id}
 
 ## 🧪 Testing
 
-Hasil pencarian memakai **loading optimistik**: kartu kos langsung dirender dari data yang sudah ada di database sementara scrape kota baru berjalan di latar belakang (ditandai overlay "Mencari data baru…"). Skeleton hanya muncul saat fetch database berjalan atau saat kota belum punya data sama sekali — perilaku ini **identik di semua ukuran layar**; breakpoint hanya mengubah layout grid (desktop: list + map 2 kolom, mobile: 1 kolom), bukan render datanya.
+Project memiliki **3 lapis pengujian** yang berjalan di GitHub Actions (`.github/workflows/ci.yml`) — backend unit test, frontend unit test, dan frontend e2e.
+
+```
+┌─────────────────────────┬────────────────────────────┬──────────────────────────┐
+│ Backend (pytest)        │ Frontend unit (Vitest)     │ Frontend e2e (Playwright)│
+│ backend/tests/          │ frontend/tests/unit/       │ frontend/tests/e2e/      │
+│ tanpa DB/network (mock) │ tanpa browser (jsdom)      │ browser asli + API stub  │
+└─────────────────────────┴────────────────────────────┴──────────────────────────┘
+```
+
+Semua file test berada di folder khusus — **tidak ada** file `*.test.js`/`*.spec.js` di dalam `src/` (kode aplikasi) maupun `app/`. Berikutnya, setiap lapisan punya folder sendiri:
+
+### 1. Backend — Unit Test (pytest)
+
+Fungsi murni scraper & Google Places client diuji tanpa database maupun network (HTTP di-mock via `httpx.MockTransport`):
+
+```bash
+cd backend
+.\venv\Scripts\python -m pip install -r requirements-dev.txt
+.\venv\Scripts\python -m pytest          # 29 test
+```
+
+Yang diuji: jarak `haversine`, bounding box & pecahan grid area, ekstraksi kota/kecamatan dari alamat (anti-pencemaran token jalan), normalisasi place → `KosCreate`, rantai fallback geocode (Google → Nominatim → tabel kota umum), TTL cache 24 jam, dan toleransi error (404 foto, tempat tak dikenal).
+
+### 2. Frontend — Unit Test (Vitest)
+
+Komponen & service diuji dalam DOM tiruan (jsdom), tanpa browser dan tanpa backend. Test berada di `frontend/tests/unit/`:
 
 ```bash
 cd frontend
-npm run test:e2e   # Playwright — render desktop (1280px) & mobile (390px), alur scrape
+npm run test:unit      # 39 test (Vitest)
+npm run test:unit:watch
 ```
 
-Test meng-stub API (tanpa backend/PostgreSQL/Google) dan memverifikasi: kartu kos lengkap (foto, badge sumber, rating, alamat, chip kota/kecamatan) muncul di kedua breakpoint; skeleton hilang setelah load selesai; hasil lama tetap tampil saat scrape berjalan maupun gagal; dan tinggi kartu tidak pernah menyusut (regression guard `> 150px`).
+Yang diuji: logika tema (preferensi sistem, persist `localStorage`, reaksi perubahan OS), client API (payload, timeout scrape, `isHttpUrl`, agregasi `fetchStats`), rendering `AppIcon` (markup SVG, ikon `filled`, ikon tak dikenal), `KosCard` (badge rating, chip, fallback foto, event keyboard), dan `FilterBar` (emits + debounce pencarian).
 
-> 🛡️ **Guard regresi kartu menyusut**: daftar hasil memakai CSS Grid 1 kolom (bukan flexbox) dengan `max-height: 76vh` + scroll — grid row bersifat *auto-sized* sehingga kartu **tidak bisa** di-squeeze seperti bug lama flexbox (`flex-shrink: 1` + `overflow: hidden` pada kartu membuat kartu kolaps beberapa piksel di layar lebar). Verifikasi disebutkan di atas dipakai untuk mencegah regresi ini di semua breakpoint.
+> 🔍 **Nilai nyata unit test**: dua bug produksi pernah tertangkap di sini — konstanta `filled` di `AppIcon.vue` membayangi prop `filled` sehingga semua ikon dirender solid (bukan outline), dan `fetchStats` di `api.js` salah destructure `.data` sehingga statistik dashboard selalu `TypeError`.
+
+### 3. Frontend — End-to-End (Playwright)
+
+Menjalankan aplikasi nyata di browser Chromium (dev server vite otomatis dinyalakan oleh `webServer` di `playwright.config.js`). **Semua API di-stub** (`page.route`) — Google Maps di-abort, `GET/POST /api/*` di-fake — sehingga e2e berjalan **tanpa backend, PostgreSQL, maupun API key**:
+
+```bash
+cd frontend
+npm run test:e2e               # 10 test
+npx playwright test --headed  # lihat browser berjalan
+npx playwright test -g "dark" # jalankan subset tertentu
+```
+
+File test di `frontend/tests/e2e/`:
+
+| File | Cakupan |
+|------|---------|
+| `dashboard.spec.js` | Render kartu kos desktop (1280px) & mobile (390px), skeleton → kartu, alur scrape (sukses/gagal/tanpa areas), regression guard tinggi kartu |
+| `theme.spec.js` | Toggle dark mode, persist `localStorage`, bertahan setelah reload, ikon header berubah |
+| `icons.spec.js` | Semua ikon SVG benar-benar ter-render (bukan elemen kosong) & select tidak melebar — di light & dark, di landing/dashboard/detail |
+| `chevron.spec.js` | Chevron `<select>` mengikuti tema (data-URI berbeda di light/dark) |
+
+> 🛡️ **Guard regresi kartu menyusut** (`dashboard.spec.js`): daftar hasil memakai CSS Grid 1 kolom (bukan flexbox) dengan `max-height: 76vh` + scroll — grid row bersifat *auto-sized* sehingga kartu tidak bisa di-squeeze seperti bug lama flexbox. E2e memverifikasi tinggi kartu tidak pernah menyusut di semua breakpoint.
+
+Hasil gagal: trace & screenshot otomatis disimpan di `frontend/test-results/` (di-upload sebagai artifact `playwright-report` oleh CI).
+
+### GitHub Actions (CI)
+
+`.github/workflows/ci.yml` — 3 job paralel di setiap push/PR ke `main`:
+
+| Job | Perintah | Artifact on failure |
+|-----|----------|---------------------|
+| `backend` | `python -m pytest backend/tests` (Python 3.11, pip cache) | — |
+| `frontend-unit` | `npm run test:unit` + `npm run build` (Node 20, npm cache) | — |
+| `frontend-e2e` | `npx playwright install --with-deps chromium` + `npm run test:e2e` | `frontend/test-results` |
+
+Karena e2e memakai stub API, workflow **tidak memerlukan** `GOOGLE_MAPS_API_KEY` maupun PostgreSQL.
 
 ---
 
@@ -502,6 +588,8 @@ Test meng-stub API (tanpa backend/PostgreSQL/Google) dan memverifikasi: kartu ko
 - [x] Scrape grid area (N×N sel, default 2×2) + breakdown kecamatan di response & UI
 - [x] Ekstraksi kota/kecamatan dari alamat (anti-pencemaran oleh token jalan)
 - [x] Geocode fallback Nominatim + tabel kota umum saat billing Google nonaktif
+- [x] Unit test backend (pytest) & frontend (Vitest) + test e2e (Playwright, folder `e2e/`)
+- [x] CI/CD pipeline — GitHub Actions: pytest, vitest, build, Playwright e2e
 
 ### 🔜 Berikutnya
 
@@ -514,8 +602,6 @@ Test meng-stub API (tanpa backend/PostgreSQL/Google) dan memverifikasi: kartu ko
 - [ ] Pagination UI di frontend
 - [ ] Jadwal scraping otomatis (cron)
 - [ ] Deployment ke production
-- [ ] Unit & integration testing
-- [ ] CI/CD pipeline
 
 ### 🗺️ Migrasi Google Maps (lanjutan)
 
