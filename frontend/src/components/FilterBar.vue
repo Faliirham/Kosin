@@ -197,8 +197,7 @@ function resetFilters() {
   gap: 8px;
   font-size: 12px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   color: var(--muted);
 }
 
@@ -292,19 +291,24 @@ function resetFilters() {
 .input:focus,
 .select:focus {
   border-color: var(--accent);
-  background: #fff;
+  background-color: var(--surface-strong);
   box-shadow: var(--focus);
 }
 
 .select {
-  flex: 0 1 auto;
+  flex: 0 1 150px;
   min-width: 140px;
+  width: auto;
   cursor: pointer;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 36px;
+}
+
+[data-theme='dark'] .select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238ea0ba' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 }
 
 .btn {
