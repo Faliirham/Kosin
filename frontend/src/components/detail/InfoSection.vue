@@ -61,9 +61,24 @@
         <AppIcon name="arrow-up-right" :size="15" />
       </button>
 
+      <button v-if="dirUrl" class="btn btn-outline" @click="openDirections">
+        <AppIcon name="navigation" :size="16" />
+        Petunjuk arah
+      </button>
+
+      <button v-if="waUrl" class="btn btn-wa" @click="openWa">
+        <AppIcon name="phone" :size="16" />
+        WhatsApp
+      </button>
+
       <button class="btn btn-fav" :class="{ active: isFav }" :aria-pressed="isFav" @click="toggleFav">
         <AppIcon name="heart" :size="16" :filled="isFav" />
         {{ isFav ? 'Tersimpan' : 'Simpan' }}
+      </button>
+
+      <button class="btn btn-outline" @click="copyShare">
+        <AppIcon name="external" :size="16" />
+        Salin tautan
       </button>
 
       <template v-if="!confirmingDelete">
@@ -88,6 +103,7 @@ import { ref, computed, inject } from 'vue'
 import AppIcon from '../AppIcon.vue'
 import { deleteKos } from '../../services/api.js'
 import { isFavorite, toggleFavorite } from '../../services/favorites.js'
+import { phoneToWa, directionsUrl, currentShareUrl } from '../../services/contact.js'
 
 const props = defineProps({ kos: { type: Object, required: true } })
 
@@ -97,6 +113,10 @@ const toast = inject('toast')
 const confirmingDelete = ref(false)
 
 const isFav = computed(() => isFavorite(props.kos))
+
+const waUrl = computed(() => phoneToWa(props.kos.phone))
+
+const dirUrl = computed(() => directionsUrl(props.kos.latitude, props.kos.longitude))
 
 function toggleFav() {
   toggleFavorite(props.kos)
@@ -112,6 +132,35 @@ function prettyUrl(url) {
 
 function openMaps() {
   window.open(props.kos.google_maps_url, '_blank', 'noopener')
+}
+
+function openDirections() {
+  window.open(dirUrl.value, '_blank', 'noopener')
+}
+
+function openWa() {
+  window.open(waUrl.value, '_blank', 'noopener')
+}
+
+async function copyShare() {
+  const url = currentShareUrl()
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(url)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = url
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      ta.remove()
+    }
+    toast('Tautan kos disalin ke papan klip', 'success')
+  } catch {
+    toast('Gagal menyalin tautan', 'error')
+  }
 }
 
 async function doDelete() {
@@ -289,6 +338,31 @@ async function doDelete() {
   color: #fff;
   border-color: transparent;
   box-shadow: var(--shadow-accent);
+}
+
+.btn-outline {
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+
+.btn-outline:hover {
+  color: var(--accent-strong);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+}
+
+.btn-wa {
+  background: #25d366;
+  color: #fff;
+  border: none;
+  box-shadow: 0 10px 24px rgba(37, 211, 102, 0.3);
+}
+
+.btn-wa:hover {
+  background: #1fb959;
+  transform: translateY(-1px);
 }
 
 /* ── Inline confirm ────────────────── */
