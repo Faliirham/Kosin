@@ -61,6 +61,11 @@
         <AppIcon name="arrow-up-right" :size="15" />
       </button>
 
+      <button class="btn btn-fav" :class="{ active: isFav }" :aria-pressed="isFav" @click="toggleFav">
+        <AppIcon name="heart" :size="16" :filled="isFav" />
+        {{ isFav ? 'Tersimpan' : 'Simpan' }}
+      </button>
+
       <template v-if="!confirmingDelete">
         <button class="btn btn-delete" @click="confirmingDelete = true">
           <AppIcon name="trash" :size="16" />
@@ -79,9 +84,10 @@
 </template>
 
 <script setup>
-import { ref, inject } from 'vue'
+import { ref, computed, inject } from 'vue'
 import AppIcon from '../AppIcon.vue'
 import { deleteKos } from '../../services/api.js'
+import { isFavorite, toggleFavorite } from '../../services/favorites.js'
 
 const props = defineProps({ kos: { type: Object, required: true } })
 
@@ -89,6 +95,12 @@ const navigate = inject('navigate')
 const toast = inject('toast')
 
 const confirmingDelete = ref(false)
+
+const isFav = computed(() => isFavorite(props.kos))
+
+function toggleFav() {
+  toggleFavorite(props.kos)
+}
 
 function prettyUrl(url) {
   try {
@@ -258,6 +270,25 @@ async function doDelete() {
 .btn-delete:hover {
   background: var(--danger-soft);
   border-color: var(--danger);
+}
+
+.btn-fav {
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.btn-fav:hover {
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+.btn-fav.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: var(--shadow-accent);
 }
 
 /* ── Inline confirm ────────────────── */

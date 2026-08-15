@@ -94,6 +94,17 @@
           <option value="name">Nama (A-Z)</option>
         </select>
         <button
+          class="btn btn-fav"
+          :class="{ active: favoritesOnly }"
+          :aria-pressed="favoritesOnly"
+          :title="favoritesOnly ? 'Tampilkan semua kos' : 'Tampilkan hanya kos favorit'"
+          @click="toggleFavorites"
+        >
+          <AppIcon name="heart" :size="14" :filled="favoritesOnly" />
+          <span>Favorit</span>
+          <span v-if="favCount" class="fav-count">{{ favCount }}</span>
+        </button>
+        <button
           v-if="hasActiveFilter"
           class="btn btn-reset"
           @click="resetFilters"
@@ -110,6 +121,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { favoritesCount } from '../services/favorites.js'
 
 const props = defineProps({ loading: Boolean, scraping: Boolean, filters: Object, initialCity: String })
 const emit = defineEmits(['scrape', 'filter'])
@@ -122,6 +134,9 @@ const filterCity = ref('')
 const filterDistrict = ref('')
 const minRating = ref('')
 const sort = ref('created_at')
+const favoritesOnly = ref(false)
+
+const favCount = computed(() => favoritesCount())
 
 watch(() => props.filters, (f) => {
   if (!f) return
@@ -130,13 +145,14 @@ watch(() => props.filters, (f) => {
   filterDistrict.value = f.district || ''
   minRating.value = f.min_rating != null ? String(f.min_rating) : ''
   sort.value = f.sort || 'created_at'
+  favoritesOnly.value = !!f.favorites_only
 }, { deep: true })
 
 onMounted(() => {
   if (props.initialCity) city.value = props.initialCity
 })
 
-const hasActiveFilter = computed(() => !!(search.value || filterCity.value || filterDistrict.value || minRating.value || sort.value !== 'created_at'))
+const hasActiveFilter = computed(() => !!(search.value || filterCity.value || filterDistrict.value || minRating.value || sort.value !== 'created_at' || favoritesOnly.value))
 
 function emitScrape() {
   emit('scrape', {
@@ -153,7 +169,13 @@ function buildFilterPayload() {
     district: filterDistrict.value || undefined,
     min_rating: minRating.value ? Number(minRating.value) : undefined,
     sort: sort.value,
+    favorites_only: favoritesOnly.value || undefined,
   }
+}
+
+function toggleFavorites() {
+  favoritesOnly.value = !favoritesOnly.value
+  emitFilterNow()
 }
 
 let filterTimer = null
@@ -357,6 +379,40 @@ function resetFilters() {
   color: var(--danger);
   border-color: rgba(192, 57, 43, 0.5);
   background: var(--danger-soft);
+}
+
+.btn-fav {
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 10px 16px;
+}
+
+.btn-fav:hover {
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+.btn-fav.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: var(--shadow-accent);
+}
+
+.fav-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .spinner {

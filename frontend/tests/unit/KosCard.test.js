@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import KosCard from '../../src/components/KosCard.vue'
+import { clearFavorites, toggleFavorite } from '../../src/services/favorites'
 
 const baseKos = {
   id: '1',
@@ -19,6 +20,11 @@ const baseKos = {
 }
 
 describe('KosCard.vue', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    clearFavorites()
+  })
+
   it('renders name, address, and chips', () => {
     const wrapper = mount(KosCard, { props: { kos: baseKos } })
     expect(wrapper.get('.card-title').text()).toBe('Kos Anggrek Putih')
@@ -71,5 +77,27 @@ describe('KosCard.vue', () => {
   it('strips "Kec." prefix from district chip', () => {
     const wrapper = mount(KosCard, { props: { kos: baseKos } })
     expect(wrapper.get('.chip-district').text()).not.toContain('Kec.')
+  })
+
+  it('renders a favorite button and toggles it without emitting card click', async () => {
+    const wrapper = mount(KosCard, { props: { kos: baseKos } })
+    const btn = wrapper.get('.fav-btn')
+    expect(btn.attributes('aria-pressed')).toBe('false')
+    expect(btn.find('.icon-heart').attributes('fill')).toBe('none')
+
+    await btn.trigger('click')
+    expect(wrapper.emitted('click')).toBeUndefined()
+    expect(btn.attributes('aria-pressed')).toBe('true')
+    expect(btn.find('.icon-heart').attributes('fill')).toBe('currentColor')
+
+    await btn.trigger('click')
+    expect(btn.attributes('aria-pressed')).toBe('false')
+  })
+
+  it('reflects an already-favorited kos with the active state', () => {
+    toggleFavorite(baseKos)
+    const wrapper = mount(KosCard, { props: { kos: baseKos } })
+    expect(wrapper.get('.fav-btn').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('.fav-btn').classes()).toContain('active')
   })
 })

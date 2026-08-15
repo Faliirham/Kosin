@@ -34,6 +34,17 @@
         {{ (kos.source || 'osm') === 'gmaps' ? 'Google' : 'OSM' }}
       </span>
 
+      <button
+        class="fav-btn"
+        :class="{ active: isFav }"
+        :aria-label="isFav ? 'Hapus dari favorit' : 'Simpan ke favorit'"
+        :aria-pressed="isFav"
+        :title="isFav ? 'Hapus dari favorit' : 'Simpan ke favorit'"
+        @click.stop="toggleFav"
+      >
+        <AppIcon name="heart" :size="16" :filled="isFav" />
+      </button>
+
       <span class="card-arrow">
         <AppIcon name="arrow-up-right" :size="16" />
       </span>
@@ -64,6 +75,7 @@
 import { ref, computed } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { isHttpUrl } from '../services/api.js'
+import { isFavorite, toggleFavorite } from '../services/favorites.js'
 
 const props = defineProps({ kos: Object })
 defineEmits(['click'])
@@ -71,6 +83,12 @@ defineEmits(['click'])
 const photoFailed = ref(false)
 
 const hasPhoto = computed(() => isHttpUrl(props.kos.photos?.[0]))
+
+const isFav = computed(() => isFavorite(props.kos))
+
+function toggleFav() {
+  toggleFavorite(props.kos)
+}
 
 const initial = computed(() => (props.kos.name || '?').trim().charAt(0).toUpperCase())
 
@@ -233,6 +251,43 @@ const shortDistrict = computed(() => {
 .kos-card:hover .card-arrow {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* ── Favorite toggle ──────────────── */
+.fav-btn {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 11px;
+  background: rgba(15, 23, 42, 0.62);
+  color: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.2s, color 0.2s, transform 0.15s, border-color 0.2s;
+}
+
+.fav-btn:hover {
+  background: rgba(15, 23, 42, 0.8);
+  transform: translateY(-2px);
+}
+
+.fav-btn.active {
+  background: var(--accent);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.fav-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* ── Body ─────────────────────────── */

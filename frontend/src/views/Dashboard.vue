@@ -62,15 +62,21 @@
       <div class="list-wrap">
         <div class="kos-list" :class="{ 'is-filtering': filtering || (scraping && kosList.length) }">
           <KosCard
-            v-for="kos in kosList"
+            v-for="kos in displayKos"
             :key="kos.id"
             :kos="kos"
             @click="openDetail(kos.id)"
           />
-          <button v-if="total > kosList.length" class="btn-load-more" @click="loadMore" :disabled="loadingMore">
+          <button v-if="!favoritesOnly && total > kosList.length" class="btn-load-more" @click="loadMore" :disabled="loadingMore">
             <span v-if="loadingMore" class="spinner-sm"></span>
             <span>{{ loadingMore ? 'Memuat…' : `Muat lebih banyak (${kosList.length}/${total})` }}</span>
           </button>
+          <StateCard
+            v-if="favoritesOnly && !displayKos.length"
+            icon="heart"
+            title="Belum ada kos favorit di daftar ini"
+            message="Klik ikon hati pada kartu kos untuk menyimpannya. Favorit tersimpan di perangkat ini."
+          />
         </div>
         <div v-if="filtering" class="list-overlay">
           <span class="spinner-md"></span>
@@ -83,7 +89,7 @@
       </div>
 
       <div class="map-container">
-        <MapView :markers="kosList" />
+        <MapView :markers="displayKos" />
       </div>
     </div>
 
@@ -105,6 +111,7 @@ import SkeletonGrid from '../components/SkeletonGrid.vue'
 import StateCard from '../components/StateCard.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { fetchKos, triggerScrape } from '../services/api.js'
+import { isFavorite } from '../services/favorites.js'
 
 const props = defineProps({ prefillCity: { type: String, default: '' } })
 
@@ -131,6 +138,13 @@ let scrapeSeq = 0
 const initialCity = props.prefillCity || ''
 
 const activeCity = computed(() => filters.value.city || initialCity || '')
+
+const favoritesOnly = computed(() => !!filters.value.favorites_only)
+
+const displayKos = computed(() => {
+  if (!favoritesOnly.value) return kosList.value
+  return kosList.value.filter(k => isFavorite(k))
+})
 
 const dashSub = computed(() => {
   if (loading.value || scraping.value) {
