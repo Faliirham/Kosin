@@ -65,18 +65,12 @@ describe('api.js', () => {
     await expect(healthCheck()).resolves.toEqual({ status: 'ok' })
   })
 
-  it('fetchStats computes total, average rating, and unique cities', async () => {
-    api.get.mockResolvedValueOnce({ data: { data: [], total: 10 } })
-    api.get.mockResolvedValueOnce({
-      data: {
-        data: [
-          { city: 'Bandung', rating: 4 },
-          { city: 'Bandung', rating: null },
-          { city: 'Jakarta', rating: 5 },
-        ],
-      },
+  it('fetchStats reads aggregate totals from /stats', async () => {
+    api.get.mockResolvedValue({
+      data: { total: 10, avg_rating: 4.5, cities: ['Bandung', 'Jakarta'] },
     })
     const stats = await fetchStats()
+    expect(api.get).toHaveBeenCalledWith('/stats')
     expect(stats.total).toBe(10)
     expect(stats.avgRating).toBeCloseTo(4.5)
     expect(stats.cities).toEqual(['Bandung', 'Jakarta'])

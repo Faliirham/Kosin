@@ -5,7 +5,7 @@ from sqlalchemy import text
 
 from app.database import engine
 from app.models import Base
-from app.routers import scraper, kos
+from app.routers import scraper, kos, stats
 
 
 @asynccontextmanager
@@ -31,6 +31,7 @@ app.add_middleware(
 
 app.include_router(scraper.router)
 app.include_router(kos.router)
+app.include_router(stats.router)
 
 
 @app.get("/api/health")

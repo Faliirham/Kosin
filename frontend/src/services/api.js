@@ -41,17 +41,10 @@ export async function healthCheck() {
 }
 
 export async function fetchStats() {
-  const [{ data: summary }, { data: sample }] = await Promise.all([
-    api.get('/kos', { params: { limit: 1 } }),
-    api.get('/kos', { params: { limit: 100, sort: 'rating', order: 'desc' } }),
-  ])
-  const rated = sample.data.filter(k => k.rating)
-  const cities = [...new Set(sample.data.map(k => k.city).filter(Boolean))]
+  const res = await api.get('/stats')
   return {
-    total: summary.total || 0,
-    avgRating: rated.length
-      ? rated.reduce((sum, k) => sum + k.rating, 0) / rated.length
-      : 0,
-    cities,
+    total: res.data.total || 0,
+    avgRating: res.data.avg_rating || 0,
+    cities: res.data.cities || [],
   }
 }
