@@ -49,6 +49,12 @@ Sebuah full-stack web application yang mencari kos-kosan via **Google Places API
 | 📊 **Sorting** | Urutkan berdasarkan terbaru, rating, atau nama |
 | 📄 **Halaman Detail** | Info lengkap: alamat, kecamatan, kontak, jam buka, website, foto, rating |
 | 💾 **Penyimpanan Persisten** | Data tersimpan di PostgreSQL dengan auto-deduplication & refresh otomatis saat re-scrape |
+| ❤️ **Favorit Kos** | Simpan kos favorit ke `localStorage` (tanpa login) & filter khusus favorit — ikon hati di kartu, detail, dan filter bar |
+| 🕘 **Riwayat Pencarian** | Pencarian terakhir tersimpan & bisa dipanggil kembali lewat chip — shortcut global `/` untuk fokus kotak pencarian |
+| 💬 **Aksi Cepat Detail** | Tombol WhatsApp (`wa.me` dari nomor lokal), Petunjuk Arah (Google Maps), dan Salin Tautan dari halaman detail |
+| 📥 **Ekspor CSV** | Download hasil pencarian (termasuk filter favorit) ke file CSV dengan encoding UTF-8 (BOM) siap Excel |
+| ⬆️ **Kembali ke Atas** | Tombol mengambang muncul setelah scroll — klik untuk kembali ke atas halaman dengan mulus |
+| 📊 **Statistik Nyata** | Landing page menampilkan agregat dari database via `GET /api/stats` (total kos, kota, rata-rata rating) |
 | 📱 **Responsive** | Tampilan adaptif & modern untuk desktop & mobile |
 
 ---
@@ -104,10 +110,12 @@ kosin/
 │   │   └── routers/
 │   │       ├── __init__.py
 │   │       ├── scraper.py           # POST /api/scrape
-│   │       └── kos.py               # GET/DELETE /api/kos
+│   │       ├── kos.py               # GET/DELETE /api/kos
+│   │       └── stats.py             # GET /api/stats (agregasi landing)
 │   ├── tests/                       # Unit test backend (pytest)
 │   │   ├── test_places.py           # Price level, normalisasi place, TTL cache, details/photos
-│   │   └── test_scraper.py          # Haversine, grid bounds, ekstraksi kota/kecamatan, fallback geocode
+│   │   ├── test_scraper.py          # Haversine, grid bounds, ekstraksi kota/kecamatan, fallback geocode
+│   │   └── test_stats.py            # Agregasi build_stats (total, kota, rating, distribusi harga)
 │   ├── pytest.ini                   # Konfigurasi pytest (asyncio mode auto)
 │   ├── requirements.txt             # Dependencies Python (runtime)
 │   ├── requirements-dev.txt         # Dependencies pengembangan (+ pytest)
@@ -125,8 +133,13 @@ kosin/
 │   │   │   ├── api.test.js          # Client API (mock axios)
 │   │   │   ├── theme.test.js        # Dark/light mode
 │   │   │   ├── AppIcon.test.js      # Rendering ikon SVG
-│   │   │   ├── KosCard.test.js      # Kartu kos (badge, chip, fallback foto)
-│   │   │   └── FilterBar.test.js    # Emits + debounce pencarian
+│   │   │   ├── KosCard.test.js      # Kartu kos (badge, chip, fallback foto, favorit)
+│   │   │   ├── FilterBar.test.js    # Emits + debounce pencarian + riwayat
+│   │   │   ├── favorites.test.js    # Store favorit localStorage (max 200, dedup id/place_id)
+│   │   │   ├── history.test.js      # Store riwayat pencarian (max 5)
+│   │   │   ├── contact.test.js      # phoneToWa & directionsUrl
+│   │   │   ├── InfoSection.test.js  # Aksi detail (WhatsApp, arah, salin tautan, favorit)
+│   │   │   └── csv.test.js          # Builder CSV (escaping, BOM, download)
 │   │   └── e2e/                     # Test end-to-end (Playwright)
 │   │       ├── dashboard.spec.js    # Render kartu desktop/mobile, alur scrape, error state
 │   │       ├── theme.spec.js        # Toggle dark mode, persist, reload
@@ -137,7 +150,11 @@ kosin/
 │       ├── App.vue                  # Root component + routing sederhana
 │       ├── services/
 │       │   ├── api.js               # Axios client ke backend
-│       │   └── theme.js             # Dark/light mode (sistem + manual, persist localStorage)
+│       │   ├── theme.js             # Dark/light mode (sistem + manual, persist localStorage)
+│       │   ├── favorites.js         # Store favorit kos (reactive, localStorage)
+│       │   ├── history.js           # Store riwayat pencarian (reactive, localStorage)
+│       │   ├── contact.js           # Helper phone→wa.me & URL petunjuk arah
+│       │   └── csv.js               # Builder CSV + download file
 │       ├── components/
 │       │   ├── AppIcon.vue          # SVG icon set
 │       │   ├── FilterBar.vue        # Form scrape + filter/sort
@@ -320,8 +337,11 @@ Vite meng-proxy request `/api/*` ke backend `localhost:8000`, jadi tidak perlu k
 2. Masukkan **kota** (contoh: Bandung, Jakarta, Surabaya) — opsional **kecamatan/kelurahan**
 3. Klik tombol **Scrape**
 4. Hasil kos-kosan muncul sebagai kartu + marker di peta
-5. Klik kartu untuk melihat **detail lengkap**
-6. Gunakan **filter** untuk mencari, filter rating, filter kecamatan, dan sorting
+5. Klik kartu untuk melihat **detail lengkap** — hubungi via **WhatsApp**, buka **petunjuk arah**, atau **salin tautan**
+6. Gunakan **filter** untuk mencari, filter rating, filter kecamatan, sorting, dan filter **favorit**
+7. Simpan kos favorit dengan ikon ❤️ (tersimpan di browser) — pencarian terakhir muncul sebagai chip riwayat
+8. Klik **Ekspor CSV** untuk mengunduh hasil (termasuk daftar favorit) dalam format siap Excel
+9. Tekan **/** kapan saja untuk langsung fokus ke kotak pencarian
 
 ---
 
@@ -468,6 +488,33 @@ DELETE /api/kos/{id}
 
 ---
 
+### Statistik Landing Page
+
+```
+GET /api/stats
+```
+
+Menampilkan agregasi seluruh data kos di database — dipakai landing page untuk statistik nyata (bukan placeholder):
+
+**Response:**
+```json
+{
+  "total": 1248,
+  "city_count": 32,
+  "cities": ["Kota Bandung", "Kabupaten Bogor", "Kota Jakarta Selatan"],
+  "avg_rating": 4.6,
+  "rated_count": 1012,
+  "price_distribution": {
+    "Murah": 310, "Sedang": 590, "Mahal": 348, "Sangat Mahal": 0
+  },
+  "source_counts": { "gmaps": 1180, "osm": 68 }
+}
+```
+
+> 💡 `cities` diurutkan berdasarkan frekuensi (paling banyak dulu, max 30). Distribusi harga memakai kategori baku `Murah / Sedang / Mahal / Sangat Mahal`.
+
+---
+
 ## 🧪 Testing
 
 Project memiliki **3 lapis pengujian** yang berjalan di GitHub Actions (`.github/workflows/ci.yml`) — backend unit test, frontend unit test, dan frontend e2e.
@@ -489,10 +536,10 @@ Fungsi murni scraper & Google Places client diuji tanpa database maupun network 
 ```bash
 cd backend
 .\venv\Scripts\python -m pip install -r requirements-dev.txt
-.\venv\Scripts\python -m pytest          # 29 test
+.\venv\Scripts\python -m pytest          # 33 test
 ```
 
-Yang diuji: jarak `haversine`, bounding box & pecahan grid area, ekstraksi kota/kecamatan dari alamat (anti-pencemaran token jalan), normalisasi place → `KosCreate`, rantai fallback geocode (Google → Nominatim → tabel kota umum), TTL cache 24 jam, dan toleransi error (404 foto, tempat tak dikenal).
+Yang diuji: jarak `haversine`, bounding box & pecahan grid area, ekstraksi kota/kecamatan dari alamat (anti-pencemaran token jalan), normalisasi place → `KosCreate`, rantai fallback geocode (Google → Nominatim → tabel kota umum), TTL cache 24 jam, toleransi error (404 foto, tempat tak dikenal), dan agregasi `build_stats` (total, kota terurut frekuensi, rata-rata rating, distribusi harga, sumber data).
 
 ### 2. Frontend — Unit Test (Vitest)
 
@@ -500,11 +547,11 @@ Komponen & service diuji dalam DOM tiruan (jsdom), tanpa browser dan tanpa backe
 
 ```bash
 cd frontend
-npm run test:unit      # 39 test (Vitest)
+npm run test:unit      # 79 test (Vitest)
 npm run test:unit:watch
 ```
 
-Yang diuji: logika tema (preferensi sistem, persist `localStorage`, reaksi perubahan OS), client API (payload, timeout scrape, `isHttpUrl`, agregasi `fetchStats`), rendering `AppIcon` (markup SVG, ikon `filled`, ikon tak dikenal), `KosCard` (badge rating, chip, fallback foto, event keyboard), dan `FilterBar` (emits + debounce pencarian).
+Yang diuji: logika tema (preferensi sistem, persist `localStorage`, reaksi perubahan OS), client API (payload, timeout scrape, `isHttpUrl`, agregasi `fetchStats`), rendering `AppIcon` (markup SVG, ikon `filled`, ikon tak dikenal), `KosCard` (badge rating, chip, fallback foto, event keyboard, favorit), `FilterBar` (emits + debounce pencarian + chip riwayat), store favorit (dedup `id`/`place_id`, batas 200, persist), store riwayat (batas 5), helper kontak (`phoneToWa`, `directionsUrl`), aksi detail `InfoSection` (WhatsApp, petunjuk arah, salin tautan, toggle favorit), dan builder CSV (escaping koma/kutip/newline, header, download via Blob).
 
 > 🔍 **Nilai nyata unit test**: dua bug produksi pernah tertangkap di sini — konstanta `filled` di `AppIcon.vue` membayangi prop `filled` sehingga semua ikon dirender solid (bukan outline), dan `fetchStats` di `api.js` salah destructure `.data` sehingga statistik dashboard selalu `TypeError`.
 
@@ -590,6 +637,11 @@ Karena e2e memakai stub API, workflow **tidak memerlukan** `GOOGLE_MAPS_API_KEY`
 - [x] Geocode fallback Nominatim + tabel kota umum saat billing Google nonaktif
 - [x] Unit test backend (pytest) & frontend (Vitest) + test e2e (Playwright, folder `e2e/`)
 - [x] CI/CD pipeline — GitHub Actions: pytest, vitest, build, Playwright e2e
+- [x] Favorit / bookmark kos (localStorage, filter favorit, tanpa login)
+- [x] Riwayat pencarian (chip cepat re-run) + shortcut global `/` untuk fokus pencarian
+- [x] Aksi cepat di detail: WhatsApp (wa.me), Petunjuk arah, & salin tautan
+- [x] Ekspor hasil pencarian ke CSV (UTF-8 BOM) & tombol kembali ke atas
+- [x] Statistik nyata di landing page (`GET /api/stats` — total, kota, rata-rata rating)
 
 ### 🔜 Berikutnya
 
@@ -598,7 +650,6 @@ Karena e2e memakai stub API, workflow **tidak memerlukan** `GOOGLE_MAPS_API_KEY`
 - [ ] Fitur promosi kos berbayar (featured) + form klaim owner + verifikasi admin
 - [ ] Harga kos-kosan spesifik (per bulan)
 - [ ] Autentikasi user
-- [ ] Favorit / bookmark kos
 - [ ] Pagination UI di frontend
 - [ ] Jadwal scraping otomatis (cron)
 - [ ] Deployment ke production
