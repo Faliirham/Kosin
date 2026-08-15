@@ -28,6 +28,18 @@
     </Transition>
   </main>
 
+  <Transition name="fade" tag="div">
+    <button
+      v-if="showTop"
+      class="back-to-top"
+      aria-label="Kembali ke atas halaman"
+      title="Kembali ke atas"
+      @click="scrollTop"
+    >
+      <AppIcon name="arrow-up" :size="18" />
+    </button>
+  </Transition>
+
   <TransitionGroup name="toast" tag="div" class="toast-container">
     <div v-for="t in toasts" :key="t.id" class="toast" :class="`toast-${t.type}`">
       <span class="toast-icon">
@@ -110,6 +122,16 @@ function toast(message, type = 'info', duration = 3200) {
   }, duration)
 }
 
+const showTop = ref(false)
+
+function onScroll() {
+  showTop.value = window.scrollY > 400
+}
+
+function scrollTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 provide('navigate', navigate)
 provide('toast', toast)
 provide('route', computed(() => route.value))
@@ -119,10 +141,38 @@ onMounted(() => {
     route.value = parseHash()
   })
   window.addEventListener('keydown', onGlobalKeydown)
+  window.addEventListener('scroll', onScroll, { passive: true })
   document.title = titles[route.value.view] || 'Kos Finder'
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onGlobalKeydown)
+  window.removeEventListener('scroll', onScroll)
 })
 </script>
+
+<style scoped>
+.back-to-top {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 12px 28px var(--shadow-accent);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+
+.back-to-top:hover {
+  background: var(--accent-strong);
+  transform: translateY(-2px);
+}
+</style>

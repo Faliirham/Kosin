@@ -21,6 +21,11 @@
           <span class="dash-stat-label">rata-rata rating</span>
         </div>
       </div>
+
+      <button v-if="kosList.length && !loading" class="btn-export" @click="exportCsv" :disabled="!displayKos.length">
+        <AppIcon name="arrow-down" :size="16" />
+        <span>Ekspor CSV</span>
+      </button>
     </div>
 
     <FilterBar
@@ -113,6 +118,7 @@ import AppIcon from '../components/AppIcon.vue'
 import { fetchKos, triggerScrape } from '../services/api.js'
 import { isFavorite } from '../services/favorites.js'
 import { addRecentSearch } from '../services/history.js'
+import { kosToCsv, downloadCsv } from '../services/csv.js'
 
 const props = defineProps({ prefillCity: { type: String, default: '' } })
 
@@ -186,6 +192,14 @@ function shortDistrict(d) {
 
 function openDetail(id) {
   navigate('detail', { id })
+}
+
+function exportCsv() {
+  if (!displayKos.value.length) return
+  const city = activeCity.value || 'semua'
+  const slug = String(city).toLowerCase().replace(/[^a-z0-9]+/gi, '-')
+  downloadCsv(`kos-${slug}.csv`, kosToCsv(displayKos.value))
+  toast(`${displayKos.value.length} kos diekspor ke CSV`, 'success')
 }
 
 async function loadKos(params = {}, reset = true) {
@@ -382,6 +396,34 @@ onBeforeUnmount(() => {
   font-size: 11px;
   color: var(--muted);
   font-weight: 600;
+}
+
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 11px 18px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s;
+}
+
+.btn-export:hover:not(:disabled) {
+  color: var(--accent-strong);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+}
+
+.btn-export:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ── Area bar ─────────────────────── */

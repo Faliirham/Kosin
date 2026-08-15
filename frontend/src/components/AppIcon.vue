@@ -31,6 +31,7 @@ const stroke = {
   'arrow-left': ['<path d="M19 12H5"/>', '<path d="M11 6l-6 6 6 6"/>'],
   'arrow-up-right': ['<path d="M7 17L17 7"/>', '<path d="M9 7h8v8"/>'],
   'arrow-down': ['<path d="M12 5v14"/>', '<path d="M6 13l6 6 6-6"/>'],
+  'arrow-up': ['<path d="M12 19V5"/>', '<path d="M6 11l6-6 6 6"/>'],
   close: ['<path d="M6 6l12 12"/>', '<path d="M18 6L6 18"/>'],
   check: ['<path d="M20 6L9 17l-5-5"/>'],
   alert: ['<path d="M12 4L2.5 20h19L12 4z"/>', '<path d="M12 10v4"/>', '<path d="M12 17.5v.01"/>'],
