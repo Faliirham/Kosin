@@ -1,8 +1,14 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import FilterBar from '../../src/components/FilterBar.vue'
+import { addRecentSearch, clearRecentSearches } from '../../src/services/history'
 
 describe('FilterBar.vue', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    clearRecentSearches()
+  })
+
   it('disables the scrape button without a city', () => {
     const wrapper = mount(FilterBar, { props: { loading: false, scraping: false, filters: {} } })
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
@@ -63,5 +69,47 @@ describe('FilterBar.vue', () => {
     const status = wrapper.find('.scrape-status')
     expect(status.exists()).toBe(true)
     expect(status.text()).toContain('Bandung')
+  })
+
+  it('renders recent search chips and re-runs the search on click', async () => {
+    addRecentSearch({ city: 'Bandung', district: 'Coblong', keyword: 'kos murah' })
+    const wrapper = mount(FilterBar, { props: { loading: false, scraping: false, filters: {} } })
+
+    const chip = wrapper.get('.recent-chip')
+    expect(chip.text()).toContain('Bandung')
+    expect(chip.text()).toContain('Coblong')
+
+    await chip.trigger('click')
+    expect(wrapper.emitted('scrape')[0][0]).toEqual({
+      city: 'Bandung',
+      district: 'Coblong',
+      keyword: 'kos murah',
+    })
+  })
+
+  it('hides recent chips when history is empty', () => {
+    const wrapper = mount(FilterBar, { props: { loading: false, scraping: false, filters: {} } })
+    expect(wrapper.find('.recent-row').exists()).toBe(false)
+  })
+
+  it('clears recent history from the clear button', async () => {
+    addRecentSearch({ city: 'Bandung' })
+    const wrapper = mount(FilterBar, { props: { loading: false, scraping: false, filters: {} } })
+    await wrapper.get('.recent-clear').trigger('click')
+    expect(wrapper.find('.recent-row').exists()).toBe(false)
+  })
+
+  it('emits filter with favorites_only when the favorites toggle is activated', async () => {
+    const wrapper = mount(FilterBar, { props: { loading: false, scraping: false, filters: {} } })
+    await wrapper.get('.btn-fav').trigger('click')
+    const payload = wrapper.emitted('filter')[0][0]
+    expect(payload.favorites_only).toBe(true)
+  })
+
+  it('reflects favorites_only from the filters prop', async () => {
+    const wrapper = mount(FilterBar, { props: { loading: false, scraping: false, filters: {} } })
+    await wrapper.setProps({ filters: { favorites_only: true } })
+    expect(wrapper.get('.btn-fav').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('.btn-fav').classes()).toContain('active')
   })
 })

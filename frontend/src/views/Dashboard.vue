@@ -112,6 +112,7 @@ import StateCard from '../components/StateCard.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { fetchKos, triggerScrape } from '../services/api.js'
 import { isFavorite } from '../services/favorites.js'
+import { addRecentSearch } from '../services/history.js'
 
 const props = defineProps({ prefillCity: { type: String, default: '' } })
 
@@ -228,6 +229,7 @@ async function handleScrape({ city, keyword, district }) {
     if (myScrape !== scrapeSeq) return
 
     if (scrapeRes.status === 'fulfilled') {
+      addRecentSearch({ city, district, keyword })
       scrapeAreas.value = scrapeRes.value?.areas || []
       filters.value = {
         ...filters.value,

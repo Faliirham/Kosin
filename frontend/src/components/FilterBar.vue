@@ -43,6 +43,25 @@
         <AppIcon name="compass" :size="13" />
         Mencari kos di {{ city }}{{ scrapeDistrict ? `, ${scrapeDistrict}` : '' }} — data ditarik langsung dari Google Maps, ini butuh beberapa saat.
       </p>
+
+      <div v-if="recentList.length" class="recent-row">
+        <span class="recent-label">
+          <AppIcon name="clock" :size="12" />
+          Pencarian terakhir
+        </span>
+        <button
+          v-for="(r, i) in recentList"
+          :key="`${r.city}-${r.district}-${i}`"
+          class="recent-chip"
+          :title="`Cari lagi ${r.city}${r.district ? `, ${r.district}` : ''}`"
+          @click="applyRecent(r)"
+        >
+          {{ r.city }}{{ r.district ? ` · ${shortDistrict(r.district)}` : '' }}
+        </button>
+        <button class="recent-clear" title="Hapus semua riwayat pencarian" aria-label="Hapus riwayat pencarian" @click="clearAllRecent">
+          <AppIcon name="close" :size="12" />
+        </button>
+      </div>
     </div>
 
     <div class="divider"></div>
@@ -122,6 +141,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { favoritesCount } from '../services/favorites.js'
+import { recentSearches, clearRecentSearches } from '../services/history.js'
 
 const props = defineProps({ loading: Boolean, scraping: Boolean, filters: Object, initialCity: String })
 const emit = defineEmits(['scrape', 'filter'])
@@ -176,6 +196,23 @@ function buildFilterPayload() {
 function toggleFavorites() {
   favoritesOnly.value = !favoritesOnly.value
   emitFilterNow()
+}
+
+const recentList = computed(() => recentSearches())
+
+function shortDistrict(d) {
+  return (d || '').replace(/^Kec\.\s*/i, '')
+}
+
+function applyRecent(r) {
+  city.value = r.city
+  scrapeDistrict.value = r.district || ''
+  keyword.value = r.keyword || 'kos kosan'
+  emitScrape()
+}
+
+function clearAllRecent() {
+  clearRecentSearches()
 }
 
 let filterTimer = null
@@ -258,6 +295,65 @@ function resetFilters() {
 
 .scrape-status .icon {
   flex: 0 0 auto;
+}
+
+.recent-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.recent-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.recent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.recent-chip:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent-strong);
+}
+
+.recent-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.recent-clear:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .field {

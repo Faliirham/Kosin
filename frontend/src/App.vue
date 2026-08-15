@@ -39,7 +39,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, provide, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, provide, watch } from 'vue'
 import AppIcon from './components/AppIcon.vue'
 import SiteHeader from './components/SiteHeader.vue'
 import Landing from './views/Landing.vue'
@@ -56,6 +56,23 @@ function parseHash() {
   if (seg[0] === 'kos' && seg[1]) return { view: 'detail', id: seg[1] }
   if (seg[0] === 'dashboard') return { view: 'dashboard', city: params.get('city') || '' }
   return { view: 'notfound' }
+}
+
+function focusSearch() {
+  const el = document.querySelector(
+    'input[aria-label="Nama kota"], input[aria-label="Cari kos"], input[aria-label="Keyword pencarian"]'
+  )
+  if (el) el.focus()
+}
+
+function onGlobalKeydown(e) {
+  const tag = e.target && e.target.tagName
+  const isTyping =
+    tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)
+  if (e.key === '/' && !isTyping) {
+    e.preventDefault()
+    focusSearch()
+  }
 }
 
 const route = ref(parseHash())
@@ -101,6 +118,11 @@ onMounted(() => {
   window.addEventListener('hashchange', () => {
     route.value = parseHash()
   })
+  window.addEventListener('keydown', onGlobalKeydown)
   document.title = titles[route.value.view] || 'Kos Finder'
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onGlobalKeydown)
 })
 </script>
