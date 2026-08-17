@@ -15,6 +15,11 @@ router = APIRouter(prefix="/api/kos", tags=["Kos"])
 logger = logging.getLogger(__name__)
 
 
+def _escape_like(value: str) -> str:
+    """Escape wildcard ILIKE agar input user tidak memperluas pencarian."""
+    return value.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+
+
 @router.get("", response_model=PaginatedKos)
 async def list_kos(
     city: str = Query(None),
@@ -30,17 +35,17 @@ async def list_kos(
     query = select(Kos)
 
     if city:
-        query = query.where(Kos.city.ilike(f"%{city}%"))
+        query = query.where(Kos.city.ilike(f"%{_escape_like(city)}%", escape="\\"))
     if district:
-        query = query.where(Kos.district.ilike(f"%{district}%"))
+        query = query.where(Kos.district.ilike(f"%{_escape_like(district)}%", escape="\\"))
     if search:
-        pattern = f"%{search}%"
+        pattern = f"%{_escape_like(search)}%"
         query = query.where(
             or_(
-                Kos.name.ilike(pattern),
-                Kos.address.ilike(pattern),
-                Kos.city.ilike(pattern),
-                Kos.district.ilike(pattern),
+                Kos.name.ilike(pattern, escape="\\"),
+                Kos.address.ilike(pattern, escape="\\"),
+                Kos.city.ilike(pattern, escape="\\"),
+                Kos.district.ilike(pattern, escape="\\"),
             )
         )
     if min_rating is not None:

@@ -22,6 +22,16 @@ async def trigger_scrape(req: ScrapeRequest, db: AsyncSession = Depends(get_db))
             lng=req.lng,
             radius_km=req.radius_km,
         )
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 403:
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    "Google Places menolak request (403). Periksa GOOGLE_MAPS_API_KEY "
+                    "dan pastikan Places API (New) aktif dengan billing di Google Cloud Console."
+                ),
+            )
+        raise HTTPException(status_code=502, detail=f"Google Places error: {e.response.status_code}")
     except (RuntimeError, httpx.HTTPError) as e:
         raise HTTPException(status_code=502, detail=str(e))
 
