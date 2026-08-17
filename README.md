@@ -39,6 +39,7 @@ Sebuah full-stack web application yang mencari kos-kosan via **Google Places API
 |-------|-----------|
 | 🔍 **Scraping Otomatis** | Mengambil data kos-kosan via **Google Places API** (utama) dengan fallback OpenStreetMap |
 | 🗺️ **Area Coverage** | Kota dipecah menjadi **grid area (N×N sel, default 2×2)** dan keyword dicari per sel — area pinggiran ikut terjangkau, hasil unik di-dedup per `place_id`; hasil banding rasio kota kecil: 60 → 100+ per kota |
+| 🔎 **Multi-Keyword** | Setiap sel dicari dengan **beberapa varian keyword** (`kos`, `kost`, `kosan`, `indekos`, `rumah kos`) secara **paralel** — Google hanya mengembalikan 20 hasil paling relevan per query, jadi satu keyword saja menangkap sedikit tempat. Cakupan naik drastis tanpa duplikat (dedup `place_id`) |
 | 🏘️ **Breakdown Kecamatan** | Response scrape menyertakan ringkasan jumlah kos per kecamatan; dashboard menampilkan chip area temuan |
 | ⭐ **Data Kaya Rating** | Rating, jumlah ulasan, telepon, website, jam buka, & rentang harga dari Google |
 | 📸 **Live Photo Fetch** | Foto kos di-resolve real-time dengan cache ≤ 24 jam (sesuai ToS Google) |
@@ -55,7 +56,8 @@ Sebuah full-stack web application yang mencari kos-kosan via **Google Places API
 | 📥 **Ekspor CSV** | Download hasil pencarian (termasuk filter favorit) ke file CSV dengan encoding UTF-8 (BOM) siap Excel |
 | ⬆️ **Kembali ke Atas** | Tombol mengambang muncul setelah scroll — klik untuk kembali ke atas halaman dengan mulus |
 | 📊 **Statistik Nyata** | Landing page menampilkan agregat dari database via `GET /api/stats` (total kos, kota, rata-rata rating) |
-| 📱 **Responsive** | Tampilan adaptif & modern untuk desktop & mobile |
+| 🦶 **Footer Atribusi** | Footer global berisi atribusi **Google Maps © Google** & **OpenStreetMap © kontributor** (sesuai ToS) + tautan privasi/syarat |
+| 📱 **Responsive** | Tampilan adaptif & modern untuk desktop & mobile — input 16px (anti zoom iOS), peta & statistik di-rapikan di layar sempit |
 
 ---
 
@@ -113,9 +115,10 @@ kosin/
 │   │       ├── kos.py               # GET/DELETE /api/kos
 │   │       └── stats.py             # GET /api/stats (agregasi landing)
 │   ├── tests/                       # Unit test backend (pytest)
-│   │   ├── test_places.py           # Price level, normalisasi place, TTL cache, details/photos
-│   │   ├── test_scraper.py          # Haversine, grid bounds, ekstraksi kota/kecamatan, fallback geocode
-│   │   └── test_stats.py            # Agregasi build_stats (total, kota, rating, distribusi harga)
+│   │   ├── test_places.py           # Price level, normalisasi place, TTL cache, details/photos, max pages
+│   │   ├── test_scraper.py          # Haversine, grid bounds, ekspansi keyword, ekstraksi kota/kecamatan, fallback geocode
+│   │   ├── test_stats.py            # Agregasi build_stats (total, kota, rating, distribusi harga)
+│   │   └── test_routers.py          # Escape LIKE, error mapping scrape (403/billing, key kosong)
 │   ├── pytest.ini                   # Konfigurasi pytest (asyncio mode auto)
 │   ├── requirements.txt             # Dependencies Python (runtime)
 │   ├── requirements-dev.txt         # Dependencies pengembangan (+ pytest)
@@ -157,9 +160,15 @@ kosin/
 │       │   └── csv.js               # Builder CSV + download file
 │       ├── components/
 │       │   ├── AppIcon.vue          # SVG icon set
+│       │   ├── SiteHeader.vue       # Header global (nav + tema)
+│       │   ├── SiteFooter.vue       # Footer global (atribusi Google/OSM + legal links)
 │       │   ├── FilterBar.vue        # Form scrape + filter/sort
 │       │   ├── KosCard.vue          # Kartu ringkasan kos
-│       │   └── MapView.vue          # Peta Google Maps dengan markers
+│       │   ├── MapView.vue          # Peta Google Maps dengan markers
+│       │   ├── StateCard.vue        # State kosong/error/loading
+│       │   ├── SkeletonGrid.vue     # Skeleton loader daftar kos
+│       │   ├── detail/              # GallerySection, InfoSection (halaman detail)
+│       │   └── landing/             # Hero, StatsBand, Features, HowItWorks, Cities, CTA
 │       └── views/
 │           ├── Dashboard.vue        # Halaman utama (list + map)
 │           └── DetailKos.vue        # Detail lengkap kos-kosan
@@ -188,6 +197,7 @@ kosin/
 | [Vue 3](https://vuejs.org/) | 3.5 | JavaScript framework |
 | [Vite](https://vite.dev/) | 6.0 | Build tool & dev server |
 | [Axios](https://axios-http.com/) | 1.7 | HTTP client |
+| [Geist](https://vercel.com/font) | — | Font display & body (via Google Fonts) |
 | [Google Maps JS API](https://developers.google.com/maps/documentation/javascript) | — | Map library (via `@googlemaps/js-api-loader`) |
 
 ### Database
@@ -285,7 +295,11 @@ cp .env.example .env
 |----------|-----------|--------|
 | `DATABASE_URL` | Koneksi PostgreSQL | `postgresql+asyncpg://postgres:admin@localhost:5432/kos_finder` |
 | `GOOGLE_MAPS_API_KEY` | API key Google Places & Geocoding (server-side only!) | `AIza...` |
-| `SCRAPE_GRID_SIZE` | Pecah kota menjadi **N×N sel area** dan cari per sel agar area pinggiran ikut terjangkau (default `2` → 4 query; opsional `3` → 9 query). Mode `lat/lng` manual tidak terpengaruh. | `2` |
+| `CORS_ORIGINS` | Origin frontend yang diizinkan CORS (pisah koma) | `http://localhost:5173,https://kosin.app` |
+| `SCRAPE_GRID_SIZE` | Pecah kota menjadi **N×N sel area** dan cari per sel agar area pinggiran ikut terjangkau (default `2` → 4 sel; opsional `3` → 9 sel). Mode `lat/lng` manual tidak terpengaruh. | `2` |
+| `SCRAPE_KEYWORDS` | Varian keyword yang dijalankan **per sel** (pisah koma). Hasil antar keyword di-dedup per `place_id`. Semakin banyak keyword semakin luas cakupan, semakin besar pemakaian API. | `kos,kost,kosan,indekos,rumah kos` |
+| `SCRAPE_MAX_PAGES` | Maks halaman pagination per query (20 hasil/halaman, maks `5`) | `3` |
+| `SCRAPE_CONCURRENCY` | Jumlah request paralel saat scrape (jangan terlalu tinggi vs quota Google) | `6` |
 
 ### Frontend Environment (`frontend/.env`)
 
@@ -399,7 +413,7 @@ POST /api/scrape
 
 > 💡 `total_scraped` = jumlah baris **baru** yang diinsert. Data yang sudah ada (match `place_id`) otomatis di-**refresh** field-nya, tidak dihitung sebagai baris baru.
 >
-> 🗺️ **Grid area**: saat scrape tanpa `lat/lng`, bounding box kota dipecah jadi N×N sel (`SCRAPE_GRID_SIZE`, default 2×2 = 4 query). Tiap sel memakai `locationRestriction` sendiri sehingga area pinggiran ikut ter-scrape; hasil antar sel di-deduplikasi (`place_id`), dan filter radius 12 km tidak berlaku di mode ini. `areas` = top 12 kecamatan berdasarkan jumlah hasil unik.
+> 🗺️ **Grid area × multi-keyword**: saat scrape tanpa `lat/lng`, bounding box kota dipecah jadi N×N sel (`SCRAPE_GRID_SIZE`, default 2×2 = 4 sel). Tiap sel dicari dengan **semua varian keyword** (`SCRAPE_KEYWORDS`, default 5) secara paralel, sehingga area pinggiran dan variasi istilah ("kos", "kost", "kosan"…) ikut terjangkau — hasil antar sel/keyword di-deduplikasi (`place_id`). Filter radius 12 km tidak berlaku di mode ini. `areas` = top 12 kecamatan berdasarkan jumlah hasil unik.
 
 ---
 
@@ -539,7 +553,7 @@ cd backend
 .\venv\Scripts\python -m pytest          # 33 test
 ```
 
-Yang diuji: jarak `haversine`, bounding box & pecahan grid area, ekstraksi kota/kecamatan dari alamat (anti-pencemaran token jalan), normalisasi place → `KosCreate`, rantai fallback geocode (Google → Nominatim → tabel kota umum), TTL cache 24 jam, toleransi error (404 foto, tempat tak dikenal), dan agregasi `build_stats` (total, kota terurut frekuensi, rata-rata rating, distribusi harga, sumber data).
+Yang diuji: jarak `haversine`, bounding box & pecahan grid area, ekspansi daftar keyword, ekstraksi kota/kecamatan dari alamat (anti-pencemaran token jalan), normalisasi place → `KosCreate`, rantai fallback geocode (Google → Nominatim → tabel kota umum), TTL cache 24 jam, batas halaman pagination, toleransi error (404 foto, tempat tak dikenal), escape wildcard filter, pemetaan error scrape (403/billing, key kosong), dan agregasi `build_stats` (total, kota terurut frekuensi, rata-rata rating, distribusi harga, sumber data).
 
 ### 2. Frontend — Unit Test (Vitest)
 
@@ -633,6 +647,9 @@ Karena e2e memakai stub API, workflow **tidak memerlukan** `GOOGLE_MAPS_API_KEY`
 - [x] Filter kota & kecamatan (scrape + list), kolom `district` di database
 - [x] Refresh data otomatis saat re-scrape (update field yang sudah ada, bukan skip)
 - [x] Scrape grid area (N×N sel, default 2×2) + breakdown kecamatan di response & UI
+- [x] Multi-keyword scrape paralel (varian kos/kost/kosan/indekos/rumah kos per sel) — cakupan hasil jauh lebih luas
+- [x] Hardening API: escape wildcard filter, CORS via env, pesan error 403/billing yang jelas
+- [x] Footer global dengan atribusi Google Maps/OSM (ToS) + tautan legal
 - [x] Ekstraksi kota/kecamatan dari alamat (anti-pencemaran oleh token jalan)
 - [x] Geocode fallback Nominatim + tabel kota umum saat billing Google nonaktif
 - [x] Unit test backend (pytest) & frontend (Vitest) + test e2e (Playwright, folder `e2e/`)
@@ -642,11 +659,13 @@ Karena e2e memakai stub API, workflow **tidak memerlukan** `GOOGLE_MAPS_API_KEY`
 - [x] Aksi cepat di detail: WhatsApp (wa.me), Petunjuk arah, & salin tautan
 - [x] Ekspor hasil pencarian ke CSV (UTF-8 BOM) & tombol kembali ke atas
 - [x] Statistik nyata di landing page (`GET /api/stats` — total, kota, rata-rata rating)
+- [x] Design refresh: font Geist, scroll-reveal, spotlight hover, stats band layered
+- [x] Konsistensi mobile: input 16px (anti zoom iOS), peta/stats di layar sempit
 
 ### 🔜 Berikutnya
 
 - [ ] Aktifkan billing untuk Place Photos (foto saat ini kosong saat billing nonaktif)
-- [ ] Pagination / multi-halaman Google Places (saat ini hanya halaman pertama hasil pencarian)
+- [ ] Pagination / multi-halaman Google Places (saat ini `SCRAPE_MAX_PAGES` membatasi 3 halaman per query)
 - [ ] Fitur promosi kos berbayar (featured) + form klaim owner + verifikasi admin
 - [ ] Harga kos-kosan spesifik (per bulan)
 - [ ] Autentikasi user
