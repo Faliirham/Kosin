@@ -178,4 +178,13 @@ onBeforeUnmount(() => {
   background: var(--accent-strong);
   transform: translateY(-2px);
 }
+
+@media (max-width: 640px) {
+  .back-to-top {
+    right: 16px;
+    bottom: 16px;
+    width: 42px;
+    height: 42px;
+  }
+}
 </style>

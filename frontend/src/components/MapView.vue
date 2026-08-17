@@ -164,6 +164,13 @@ onBeforeUnmount(() => {
   border-radius: inherit;
 }
 
+@media (max-width: 640px) {
+  .map-wrap,
+  .map {
+    min-height: 300px;
+  }
+}
+
 .map-state {
   position: absolute;
   inset: 0;

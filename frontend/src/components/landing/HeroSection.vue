@@ -480,5 +480,29 @@ function submitSearch() {
   .hero-card-main img {
     height: 340px;
   }
+
+  .float-card {
+    padding: 11px 14px;
+    gap: 10px;
+  }
+
+  .float-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .float-card strong {
+    font-size: 16px;
+  }
+
+  .float-top {
+    top: 14px;
+    left: 6px;
+  }
+
+  .float-bottom {
+    bottom: 18px;
+    right: 6px;
+  }
 }
 </style>

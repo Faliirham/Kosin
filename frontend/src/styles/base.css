@@ -99,3 +99,12 @@ html[data-theme='dark'] .grain {
     transition: none;
   }
 }
+
+/* ── Mobile input sizing ────────────── */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* cegah auto-zoom iOS Safari saat fokus */
+  }
+}

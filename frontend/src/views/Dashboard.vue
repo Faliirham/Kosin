@@ -617,6 +617,12 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
+  .map-container {
+    height: 320px;
+  }
+}
+
+@media (max-width: 640px) {
   .dashboard {
     padding: 28px 16px 56px;
   }
@@ -628,10 +634,25 @@ onBeforeUnmount(() => {
 
   .dash-stats {
     width: 100%;
+    gap: 8px;
   }
 
   .dash-stat {
     flex: 1;
+    padding: 10px 12px;
+  }
+
+  .dash-stat-num {
+    font-size: 19px;
+  }
+
+  .dash-stat-label {
+    font-size: 10px;
+  }
+
+  .btn-export {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>
