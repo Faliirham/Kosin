@@ -1,6 +1,6 @@
 <template>
   <section class="section" id="fitur">
-    <div class="section-head">
+    <div class="section-head" v-reveal>
       <span class="eyebrow">Kenapa Kos Finder</span>
       <h2 class="section-title">Cari kos lebih pintar,<br />bukan lebih capek</h2>
       <p class="section-sub">
@@ -10,7 +10,7 @@
     </div>
 
     <div class="bento">
-      <article class="bento-card bento-photo">
+      <article class="bento-card bento-photo" v-reveal>
         <img :src="imgRoom1" :alt="altRoom1" />
         <div class="bento-shade"></div>
         <div class="bento-caption">
@@ -19,7 +19,7 @@
         </div>
       </article>
 
-      <article class="bento-card bento-accent">
+      <article class="bento-card bento-accent" v-reveal>
         <span class="bento-icon">
           <AppIcon name="star" filled :size="22" />
         </span>
@@ -27,7 +27,7 @@
         <p>Penilaian dan ulasan diambil langsung dari Google Maps — bukan angka rekaan.</p>
       </article>
 
-      <article class="bento-card">
+      <article class="bento-card" v-reveal>
         <span class="bento-icon">
           <AppIcon name="map-pin" :size="22" />
         </span>
@@ -35,7 +35,7 @@
         <p>Google Maps menampilkan posisi tiap kos secara akurat, dekat dengan kampus atau kantormu.</p>
       </article>
 
-      <article class="bento-card">
+      <article class="bento-card" v-reveal>
         <span class="bento-icon">
           <AppIcon name="layers" :size="22" />
         </span>
@@ -43,7 +43,7 @@
         <p>Re-scrape menyegarkan data lama secara langsung, tanpa duplikat dan tanpa data basi.</p>
       </article>
 
-      <article class="bento-card bento-photo bento-photo-tall">
+      <article class="bento-card bento-photo bento-photo-tall" v-reveal>
         <img :src="imgRoom2" :alt="altRoom2" />
         <div class="bento-shade"></div>
         <div class="bento-caption">

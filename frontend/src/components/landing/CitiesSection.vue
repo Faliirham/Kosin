@@ -1,6 +1,6 @@
 <template>
   <section class="section" id="kota">
-    <div class="section-head">
+    <div class="section-head" v-reveal>
       <span class="eyebrow">Kota populer</span>
       <h2 class="section-title">Mau pindah ke mana?</h2>
       <p class="section-sub">Pilih kota favoritmu untuk langsung melihat kos-kosan di sekitarnya.</p>
@@ -8,9 +8,12 @@
 
     <div class="city-grid">
       <button
-        v-for="c in cityCards"
+        v-for="(c, i) in cityCards"
         :key="c.name"
         class="city-card"
+        :class="{ 'city-card-featured': i === 0 }"
+        v-reveal
+        @mousemove="onCardMove"
         @click="$emit('go-city', c.name)"
       >
         <span class="city-icon">
@@ -30,6 +33,12 @@
 import AppIcon from '../AppIcon.vue'
 
 defineEmits(['go-city'])
+
+function onCardMove(e) {
+  const rect = e.currentTarget.getBoundingClientRect()
+  e.currentTarget.style.setProperty('--mx', `${e.clientX - rect.left}px`)
+  e.currentTarget.style.setProperty('--my', `${e.clientY - rect.top}px`)
+}
 
 const cityCards = [
   { name: 'Bandung', meta: '±3.500 kos · Jawa Barat' },
@@ -59,13 +68,67 @@ const cityCards = [
   padding: 22px 52px 22px 24px;
   text-align: left;
   color: var(--ink);
+  overflow: hidden;
   transition: transform 0.22s, box-shadow 0.22s, border-color 0.22s;
+}
+
+.city-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+  background: radial-gradient(
+    340px circle at var(--mx, 50%) var(--my, 50%),
+    var(--accent-soft),
+    transparent 65%
+  );
+  pointer-events: none;
+}
+
+.city-card:hover::before {
+  opacity: 0.8;
+}
+
+.city-card-featured {
+  background: linear-gradient(135deg, var(--dark), var(--dark-2));
+  border-color: transparent;
+  color: #fff;
+}
+
+.city-card-featured .city-name {
+  color: #fff;
+}
+
+.city-card-featured .city-meta {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.city-card-featured .city-icon {
+  background: rgba(255, 255, 255, 0.14);
+  color: #93c5fd;
+}
+
+.city-card-featured .city-arrow {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.city-card-featured:hover .city-arrow {
+  color: #93c5fd;
 }
 
 .city-card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-md);
   border-color: var(--accent-border);
+}
+
+.city-card-featured:hover {
+  border-color: transparent;
+}
+
+.city-card-featured:hover .city-arrow {
+  transform: translate(2px, -2px);
 }
 
 .city-icon {

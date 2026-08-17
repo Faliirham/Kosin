@@ -6,7 +6,7 @@
     </div>
 
     <div class="steps">
-      <article class="step">
+      <article class="step" v-reveal>
         <span class="step-num">01</span>
         <div class="step-body">
           <h3>Masukkan kota</h3>
@@ -14,9 +14,11 @@
         </div>
       </article>
       <div class="step-connector" aria-hidden="true">
-        <AppIcon name="arrow-right" :size="22" />
+        <span class="connector-line"></span>
+        <AppIcon name="arrow-right" :size="18" />
+        <span class="connector-line"></span>
       </div>
-      <article class="step">
+      <article class="step" v-reveal>
         <span class="step-num">02</span>
         <div class="step-body">
           <h3>Kami cari dari Google Maps</h3>
@@ -24,9 +26,11 @@
         </div>
       </article>
       <div class="step-connector" aria-hidden="true">
-        <AppIcon name="arrow-right" :size="22" />
+        <span class="connector-line"></span>
+        <AppIcon name="arrow-right" :size="18" />
+        <span class="connector-line"></span>
       </div>
-      <article class="step">
+      <article class="step" v-reveal>
         <span class="step-num">03</span>
         <div class="step-body">
           <h3>Bandingkan &amp; pilih</h3>
@@ -35,7 +39,7 @@
       </article>
     </div>
 
-    <div class="cta-row">
+    <div class="cta-row" v-reveal>
       <button class="btn-primary-lg" @click="$emit('go-city', '')">
         Mulai cari kos
         <AppIcon name="arrow-right" :size="18" />
@@ -100,8 +104,15 @@ defineEmits(['go-city'])
 .step-connector {
   display: flex;
   align-items: center;
+  gap: 10px;
   color: var(--line-strong);
   flex: 0 0 auto;
+}
+
+.connector-line {
+  width: 26px;
+  height: 1px;
+  background: var(--line-strong);
 }
 
 .cta-row {
@@ -135,8 +146,11 @@ defineEmits(['go-city'])
   }
 
   .step-connector {
-    transform: rotate(90deg);
     justify-content: center;
+  }
+
+  .connector-line {
+    display: none;
   }
 }
 </style>

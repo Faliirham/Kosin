@@ -18,6 +18,7 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   line-height: 1.55;
+  font-feature-settings: 'cv11' 1, 'ss01' 1;
   transition: background 0.25s ease, color 0.25s ease;
 }
 
@@ -76,4 +77,25 @@ html[data-theme='dark'] .grain {
 
 .skip-link:focus {
   top: 12px;
+}
+
+/* ── Scroll reveal (v-reveal) ──────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }

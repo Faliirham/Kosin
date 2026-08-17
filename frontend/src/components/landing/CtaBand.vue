@@ -1,6 +1,6 @@
 <template>
   <section class="cta-band">
-    <div class="cta-inner">
+    <div class="cta-inner" v-reveal>
       <h2 class="cta-title">Siap pindah? Mulai cari kosmu sekarang.</h2>
       <p class="cta-sub">Gratis, tanpa daftar, dan langsung menampilkan data dari Google Maps.</p>
       <button class="btn-light-lg" @click="$emit('go-city', '')">

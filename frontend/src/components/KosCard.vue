@@ -6,6 +6,7 @@
     @click="$emit('click')"
     @keydown.enter="$emit('click')"
     @keydown.space.prevent="$emit('click')"
+    @mousemove="onCardMove"
   >
     <div class="card-photo">
       <img
@@ -90,6 +91,12 @@ function toggleFav() {
   toggleFavorite(props.kos)
 }
 
+function onCardMove(e) {
+  const rect = e.currentTarget.getBoundingClientRect()
+  e.currentTarget.style.setProperty('--mx', `${e.clientX - rect.left}px`)
+  e.currentTarget.style.setProperty('--my', `${e.clientY - rect.top}px`)
+}
+
 const initial = computed(() => (props.kos.name || '?').trim().charAt(0).toUpperCase())
 
 const shortDistrict = computed(() => {
@@ -100,6 +107,7 @@ const shortDistrict = computed(() => {
 
 <style scoped>
 .kos-card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
@@ -108,6 +116,25 @@ const shortDistrict = computed(() => {
   transition: transform 0.22s, box-shadow 0.25s, border-color 0.25s;
   display: flex;
   flex-direction: column;
+}
+
+.kos-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.3s;
+  background: radial-gradient(
+    420px circle at var(--mx, 50%) var(--my, 50%),
+    var(--accent-soft),
+    transparent 65%
+  );
+  pointer-events: none;
+}
+
+.kos-card:hover::before {
+  opacity: 0.75;
 }
 
 .kos-card:hover {

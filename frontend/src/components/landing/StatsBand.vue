@@ -1,18 +1,21 @@
 <template>
   <section class="stats-band" aria-label="Statistik">
-    <div class="stats-inner">
+    <div class="stats-inner" v-reveal>
       <div class="stat-item">
         <span class="stat-value">{{ stats.total }}</span>
         <span class="stat-label">kos tercatat</span>
       </div>
+      <div class="stat-divider" aria-hidden="true"></div>
       <div class="stat-item">
         <span class="stat-value">{{ stats.cities }}</span>
         <span class="stat-label">kota tercakup</span>
       </div>
+      <div class="stat-divider" aria-hidden="true"></div>
       <div class="stat-item">
         <span class="stat-value">{{ stats.rating }}</span>
         <span class="stat-label">rata-rata rating</span>
       </div>
+      <div class="stat-divider" aria-hidden="true"></div>
       <div class="stat-item">
         <span class="stat-value">24 jam</span>
         <span class="stat-label">cache detail Google</span>
@@ -37,14 +40,26 @@ defineProps({
 }
 
 .stats-inner {
-  background: var(--surface);
-  border: 1px solid var(--line);
+  position: relative;
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: none;
   border-radius: 22px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
   padding: 34px 28px;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  gap: 8px;
+  align-items: center;
+}
+
+html[data-theme='dark'] .stats-inner {
+  box-shadow: var(--shadow-md), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 42px;
+  background: var(--line);
 }
 
 .stat-item {
@@ -74,6 +89,11 @@ defineProps({
   .stats-inner {
     grid-template-columns: 1fr 1fr;
     padding: 26px 20px;
+    row-gap: 20px;
+  }
+
+  .stat-divider {
+    display: none;
   }
 
   .stat-value {
