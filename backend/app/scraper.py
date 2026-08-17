@@ -25,10 +25,22 @@ DEFAULT_RADIUS_KM = 12.0
 EARTH_RADIUS_KM = 6371.0
 
 # Grid area scraping: kota dipecah menjadi NxN sel dan keyword dijalankan per
-# sel, sehingga area pinggiran ikut terjangkau. Default 2x2 = 4 query per scrape
-# (~$0.13, masih jauh di bawah free credit Google $200/bulan).
+# sel, sehingga area pinggiran ikut terjangkau. Default 2x2 = 4 sel.
 GRID_SIZE = int(os.getenv("SCRAPE_GRID_SIZE", "2"))
 MIN_GRID_SPAN = 0.05  # kota dengan span lebih kecil tidak perlu dipecah
+
+# Multi-keyword: Google mengembalikan max 20 hasil per query dan mengurutkannya
+# berdasarkan relevansi, jadi satu keyword saja menangkap sedikit tempat.
+# Menjalankan beberapa varian (kos/kost/kosan/indekos/rumah kos) per sel dan
+# men-dedup berdasarkan place_id memperluas cakupan tanpa duplikat.
+DEFAULT_KEYWORD = "kos kosan"
+SCRAPE_KEYWORDS = [
+    k.strip()
+    for k in os.getenv("SCRAPE_KEYWORDS", "kos,kost,kosan,indekos,rumah kos").split(",")
+    if k.strip()
+]
+SCRAPE_MAX_PAGES = int(os.getenv("SCRAPE_MAX_PAGES", "3"))
+SCRAPE_CONCURRENCY = max(1, int(os.getenv("SCRAPE_CONCURRENCY", "6")))
 
 # Fallback koordinat kota umum (dipakai saat Google Geocoding belum aktif/billing off)
 CITY_FALLBACK = {
@@ -200,6 +212,20 @@ async def _geocode_city(client: httpx.AsyncClient, location: str) -> dict | None
     )
 
 
+def _expand_keywords(keyword: str) -> list[str]:
+    """Gabungkan keyword user dengan varian default (tanpa duplikat).
+
+    Keyword bawaan ('kos kosan') dianggap sudah tercakup oleh varian 'kos',
+    sehingga scrape normal berjalan dengan daftar varian saja. Keyword custom
+    (mis. 'kos putri murah') ditambahkan di depan agar tetap dihormati.
+    """
+    base = list(SCRAPE_KEYWORDS)
+    kw = (keyword or DEFAULT_KEYWORD).strip()
+    if kw and kw.lower() != DEFAULT_KEYWORD and kw.lower() not in [b.lower() for b in base]:
+        base.insert(0, kw)
+    return base or [DEFAULT_KEYWORD]
+
+
 def _place_to_kos(place: dict, city: str) -> KosCreate:
     """Normalisasi hasil Google Places (search/details) -> KosCreate."""
     address = place.get("address")
@@ -234,14 +260,16 @@ async def scrape_kos(
     """Scrape kos-kosan via Google Places API dengan pembatas lokasi kota/kecamatan.
 
     Mode kota (tanpa lat/lng): bounding box kota dipecah menjadi sel-sel grid
-    (default 2x2) dan keyword dijalankan per sel, sehingga area pinggiran kota
-    ikut terjangkau. Hasil antar sel di-deduplikasi berdasarkan `place_id`.
+    (default 2x2) dan setiap varian keyword dijalankan per sel secara paralel,
+    sehingga area pinggiran kota ikut terjangkau. Hasil antar sel dan antar
+    keyword di-deduplikasi berdasarkan `place_id` (fallback nama+alamat).
     Mode manual (lat/lng + radius_km): satu pencarian berpusat di koordinat,
     dengan filter jarak radius seperti sebelumnya.
     """
     radius = radius_km or DEFAULT_RADIUS_KM
     location_query = f"{district}, {city}" if district else city
     direct_mode = lat is not None and lng is not None
+    keywords = _expand_keywords(keyword)
 
     async with httpx.AsyncClient() as client:
         if direct_mode:
@@ -263,9 +291,19 @@ async def scrape_kos(
             grid = 1 if span < MIN_GRID_SPAN else min(GRID_SIZE, 3)
         cells = split_bounds(bounds, grid)
 
+        semaphore = asyncio.Semaphore(SCRAPE_CONCURRENCY)
+
+        async def search_cell(cell: dict, kw: str) -> tuple[str, list[dict]]:
+            async with semaphore:
+                return kw, await places.search_places(
+                    client, location_query, kw, bounds=cell, max_pages=SCRAPE_MAX_PAGES
+                )
+
+        tasks = [search_cell(cell, kw) for cell in cells for kw in keywords]
         deduped: dict = {}
-        for idx, cell in enumerate(cells, start=1):
-            found = await places.search_places(client, location_query, keyword, bounds=cell)
+        completed = 0
+        for task in asyncio.as_completed(tasks):
+            kw, found = await task
             for place in found:
                 key = place.get("place_id") or (
                     place.get("name"),
@@ -274,11 +312,12 @@ async def scrape_kos(
                 if key in deduped:
                     continue
                 deduped[key] = place
+            completed += 1
             logger.info(
-                "Grid scrape %s: sel %d/%d (%d raw, %d unik kumulatif)",
+                "Grid scrape %s: task %d/%d (%d raw, %d unik kumulatif)",
                 location_query,
-                idx,
-                len(cells),
+                completed,
+                len(tasks),
                 len(found),
                 len(deduped),
             )
@@ -287,6 +326,13 @@ async def scrape_kos(
             logger.warning("Google Places tidak menemukan hasil untuk %s", location_query)
             return []
 
+        logger.info(
+            "Scrape %s via Google Places: %d hasil unik (%d sel grid x %d keyword)",
+            location_query,
+            len(deduped),
+            len(cells),
+            len(keywords),
+        )
         results = [_place_to_kos(p, city) for p in deduped.values()]
 
         if direct_mode:
@@ -306,10 +352,12 @@ async def scrape_kos(
             results = filtered
 
         logger.info(
-            "Scrape %s via Google Places: %d hasil unik (%s sel grid)",
+            "Scrape %s via Google Places: %d hasil unik (%d sel grid, %d keyword, %d halaman)",
             location_query,
             len(results),
             len(cells),
+            len(keywords),
+            SCRAPE_MAX_PAGES,
         )
         return results
 

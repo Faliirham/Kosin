@@ -17,6 +17,7 @@ PHOTO_URL = "https://places.googleapis.com/v1/{name}/media"
 
 PHOTO_MAX_WIDTH = 1200
 MAX_RESULTS = 60
+DEFAULT_MAX_PAGES = int(os.getenv("SCRAPE_MAX_PAGES", "3"))
 CACHE_TTL = 24 * 60 * 60  # 24 jam (sesuai ToS & README)
 
 # Field mask untuk search & details (hemat biaya, sesuai kebutuhan)
@@ -124,6 +125,7 @@ async def search_places(
     city: str,
     keyword: str,
     bounds: dict | None = None,
+    max_pages: int | None = None,
 ) -> list[dict]:
     """Text Search (New) dengan pagination, cache, dan locationRestriction."""
     _raise_if_unavailable()
@@ -134,6 +136,7 @@ async def search_places(
         logger.info("Cache hit search %s", cache_key)
         return cached
 
+    page_limit = min(max(1, int(max_pages if max_pages is not None else DEFAULT_MAX_PAGES)), 5)
     results: list[dict] = []
     page_token = None
     query = f"{keyword} {city}".strip()
@@ -151,7 +154,7 @@ async def search_places(
             }
         }
 
-    for _ in range(3):  # max ~60 hasil
+    for _ in range(page_limit):  # max ~20 * page_limit hasil
         if page_token:
             body["pageToken"] = page_token
         resp = await client.post(

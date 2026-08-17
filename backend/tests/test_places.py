@@ -130,3 +130,42 @@ async def test_resolve_photo_urls_tolerates_404(monkeypatch):
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         urls = await places.resolve_photo_urls(client, ["places/ok", "places/gone"])
     assert urls == ["https://img.example/1"]
+
+
+async def test_search_places_respects_max_pages(monkeypatch):
+    monkeypatch.setattr(places, "API_KEY", "test-key")
+    places.cache.clear()
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return httpx.Response(
+            200,
+            json={
+                "places": [
+                    {"id": f"p{calls['n']}", "displayName": {"text": f"Kos {calls['n']}"}}
+                ],
+                "nextPageToken": "token-next",
+            },
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        results = await places.search_places(client, "Bandung", "kos", max_pages=2)
+    assert calls["n"] == 2
+    assert len(results) == 2
+    assert results[0]["place_id"] == "p1"
+    assert results[1]["place_id"] == "p2"
+
+
+async def test_search_places_clamps_max_pages(monkeypatch):
+    monkeypatch.setattr(places, "API_KEY", "test-key")
+    places.cache.clear()
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return httpx.Response(200, json={"places": [], "nextPageToken": "token-next"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        await places.search_places(client, "Bandung", "kos", max_pages=0)
+    assert calls["n"] == 1

@@ -6,6 +6,7 @@ import pytest
 from app import places
 from app.scraper import (
     _bounds_around,
+    _expand_keywords,
     _extract_city,
     _extract_district,
     _geocode_city,
@@ -18,6 +19,32 @@ from app.scraper import (
 def test_haversine_bandung_jakarta_distance():
     d = _haversine_km(-6.9175, 107.6191, -6.2088, 106.8456)
     assert 100 < d < 140
+
+
+def test_expand_keywords_default_uses_variants(monkeypatch):
+    monkeypatch.setattr(
+        "app.scraper.SCRAPE_KEYWORDS", ["kos", "kost", "kosan", "indekos", "rumah kos"]
+    )
+    kws = _expand_keywords("kos kosan")
+    assert kws == ["kos", "kost", "kosan", "indekos", "rumah kos"]
+
+
+def test_expand_keywords_custom_prepended(monkeypatch):
+    monkeypatch.setattr("app.scraper.SCRAPE_KEYWORDS", ["kos", "kost"])
+    kws = _expand_keywords("kos putri murah")
+    assert kws[0] == "kos putri murah"
+    assert kws[1:] == ["kos", "kost"]
+
+
+def test_expand_keywords_custom_not_duplicated(monkeypatch):
+    monkeypatch.setattr("app.scraper.SCRAPE_KEYWORDS", ["kos", "kost", "kosan"])
+    kws = _expand_keywords("Kos")
+    assert kws == ["kos", "kost", "kosan"]
+
+
+def test_expand_keywords_empty_falls_back(monkeypatch):
+    monkeypatch.setattr("app.scraper.SCRAPE_KEYWORDS", [])
+    assert _expand_keywords("kos kosan") == ["kos kosan"]
 
 
 def test_haversine_zero_for_same_point():
