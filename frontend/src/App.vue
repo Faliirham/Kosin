@@ -28,6 +28,8 @@
     </Transition>
   </main>
 
+  <SiteFooter @navigate="navigate" />
+
   <Transition name="fade" tag="div">
     <button
       v-if="showTop"
@@ -54,6 +56,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, provide, watch } from 'vue'
 import AppIcon from './components/AppIcon.vue'
 import SiteHeader from './components/SiteHeader.vue'
+import SiteFooter from './components/SiteFooter.vue'
 import Landing from './views/Landing.vue'
 import Dashboard from './views/Dashboard.vue'
 import DetailKos from './views/DetailKos.vue'
