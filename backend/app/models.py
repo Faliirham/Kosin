@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Float, Integer, Text, DateTime, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Float, Integer, Text, DateTime, JSON, Uuid
 from sqlalchemy.orm import DeclarativeBase
 
 
@@ -12,8 +11,8 @@ class Base(DeclarativeBase):
 class Kos(Base):
     __tablename__ = "kos"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    place_id = Column(String(255), nullable=True, index=True)
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    place_id = Column(String(255), nullable=True)
     source = Column(String(20), nullable=True, default="osm", index=True)
     name = Column(String(255), nullable=False)
     address = Column(Text, nullable=True)

@@ -130,13 +130,12 @@ async def search_places(
     """Text Search (New) dengan pagination, cache, dan locationRestriction."""
     _raise_if_unavailable()
 
-    cache_key = f"search:{city.lower()}:{keyword.lower()}:{_bounds_key(bounds)}"
+    page_limit = min(max(1, int(max_pages if max_pages is not None else DEFAULT_MAX_PAGES)), 5)
+    cache_key = f"search:{city.lower()}:{keyword.lower()}:{_bounds_key(bounds)}:p{page_limit}"
     cached = cache.get(cache_key)
     if cached is not None:
         logger.info("Cache hit search %s", cache_key)
         return cached
-
-    page_limit = min(max(1, int(max_pages if max_pages is not None else DEFAULT_MAX_PAGES)), 5)
     results: list[dict] = []
     page_token = None
     query = f"{keyword} {city}".strip()

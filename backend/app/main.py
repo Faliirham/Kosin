@@ -14,14 +14,23 @@ def _cors_origins() -> list[str]:
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+async def run_migrations(conn) -> None:
+    """Migrasi ringan & idempotent — dipakai saat startup maupun di test."""
+    await conn.run_sync(Base.metadata.create_all)
+    if conn.dialect.name == "postgresql":
+        # Migrasi untuk tabel lama (idempotent, aman dijalankan tiap boot)
         await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS place_id VARCHAR(255)"))
         await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS source VARCHAR(20)"))
         await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS district VARCHAR(100)"))
-        await conn.execute(text("DELETE FROM kos WHERE source IS NULL OR source != 'gmaps'"))
+    # Indeks pendukung dedup & pagination (PG/SQLite memperbolehkan banyak NULL pada UNIQUE)
+    await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_kos_place_id ON kos (place_id)"))
+    await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_kos_created_at ON kos (created_at)"))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await run_migrations(conn)
     yield
     await engine.dispose()
 

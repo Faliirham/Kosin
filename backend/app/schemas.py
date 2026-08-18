@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class KosBase(BaseModel):
@@ -41,6 +41,13 @@ class ScrapeRequest(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
     radius_km: Optional[float] = None
+
+    @field_validator("radius_km")
+    @classmethod
+    def validate_radius(cls, value: Optional[float]) -> Optional[float]:
+        if value is not None and not (0 < value <= 500):
+            raise ValueError("radius_km harus antara 0 dan 500 km")
+        return value
 
 
 class AreaCount(BaseModel):

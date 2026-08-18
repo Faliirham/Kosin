@@ -29,7 +29,7 @@ async def list_kos(
     sort: str = Query("created_at"),
     order: str = Query("desc"),
     limit: int = Query(50, le=100),
-    offset: int = Query(0),
+    offset: int = Query(0, ge=0, le=10_000),
     db: AsyncSession = Depends(get_db),
 ):
     query = select(Kos)
@@ -56,7 +56,8 @@ async def list_kos(
 
     sort_col = getattr(Kos, sort, Kos.created_at)
     order_func = sort_col.desc if order == "desc" else sort_col.asc
-    query = query.order_by(order_func()).offset(offset).limit(limit)
+    id_tiebreaker = Kos.id.desc() if order == "desc" else Kos.id.asc()
+    query = query.order_by(order_func(), id_tiebreaker).offset(offset).limit(limit)
 
     result = await db.execute(query)
     kos_list = result.scalars().all()
@@ -81,19 +82,19 @@ async def _enrich_gmaps(kos: Kos) -> Kos:
             photos = await places.resolve_photo_urls(client, detail.get("photos"), limit=5)
 
             enriched = {
-                "name": detail.get("name") or kos.name,
-                "address": detail.get("address") or kos.address,
-                "latitude": detail.get("latitude") or kos.latitude,
-                "longitude": detail.get("longitude") or kos.longitude,
-                "rating": detail.get("rating") or kos.rating,
-                "total_reviews": detail.get("total_reviews") or kos.total_reviews,
-                "phone": detail.get("phone") or kos.phone,
-                "website": detail.get("website") or kos.website,
-                "opening_hours": detail.get("opening_hours") or kos.opening_hours,
+                "name": detail.get("name") if detail.get("name") is not None else kos.name,
+                "address": detail.get("address") if detail.get("address") is not None else kos.address,
+                "latitude": detail.get("latitude") if detail.get("latitude") is not None else kos.latitude,
+                "longitude": detail.get("longitude") if detail.get("longitude") is not None else kos.longitude,
+                "rating": detail.get("rating") if detail.get("rating") is not None else kos.rating,
+                "total_reviews": detail.get("total_reviews") if detail.get("total_reviews") is not None else kos.total_reviews,
+                "phone": detail.get("phone") if detail.get("phone") is not None else kos.phone,
+                "website": detail.get("website") if detail.get("website") is not None else kos.website,
+                "opening_hours": detail.get("opening_hours") if detail.get("opening_hours") is not None else kos.opening_hours,
                 "price_range": places.price_level_to_range(detail.get("price_level"))
                 or kos.price_range,
                 "photos": photos or kos.photos,
-                "google_maps_url": detail.get("google_maps_url") or kos.google_maps_url,
+                "google_maps_url": detail.get("google_maps_url") if detail.get("google_maps_url") is not None else kos.google_maps_url,
             }
             for field, value in enriched.items():
                 if value is not None:
