@@ -89,6 +89,35 @@ async def test_scrape_rejects_invalid_radius(client, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_stats_sql_aggregation(client, db_session):
+    from app.routers.stats import _stats_cache
+
+    _stats_cache.clear()
+    _seed(
+        db_session,
+        [
+            Kos(name="A", city="Bandung", rating=4.5, price_range="Murah", source="gmaps"),
+            Kos(name="B", city="Bandung", price_range="Mahal", source="osm"),
+            Kos(name="C", city="Jakarta", rating=4.0, price_range="Mahal", source="gmaps"),
+        ],
+    )
+    await db_session.commit()
+
+    res = await client.get("/api/stats")
+
+    assert res.status_code == 200
+    body = res.json()
+    assert body["total"] == 3
+    assert body["city_count"] == 2
+    assert body["cities"] == ["Bandung", "Jakarta"]
+    assert body["rated_count"] == 2
+    assert body["avg_rating"] == 4.25
+    assert body["price_distribution"]["Mahal"] == 2
+    assert body["price_distribution"]["Murah"] == 1
+    assert body["source_counts"] == {"gmaps": 2, "osm": 1}
+
+
+@pytest.mark.asyncio
 async def test_unique_place_id_index_blocks_duplicates(db_session):
     db_session.add(Kos(name="Kos A", place_id="ChIJa", source="gmaps"))
     await db_session.flush()
