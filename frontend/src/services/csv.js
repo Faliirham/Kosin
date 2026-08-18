@@ -1,9 +1,13 @@
 function escapeCell(value) {
   const s = value == null ? '' : String(value)
-  if (/[",\n\r]/.test(s)) {
-    return `"${s.replace(/"/g, '""')}"`
+  let out = s
+  if (/^[=+\-@\t\r]/.test(out)) {
+    out = `'${out}`
   }
-  return s
+  if (/[",\n\r]/.test(out)) {
+    return `"${out.replace(/"/g, '""')}"`
+  }
+  return out
 }
 
 const HEADERS = [
@@ -51,5 +55,5 @@ export function downloadCsv(filename, csv) {
   document.body.appendChild(a)
   a.click()
   a.remove()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

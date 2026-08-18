@@ -21,6 +21,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { Loader } from '@googlemaps/js-api-loader'
 import AppIcon from './AppIcon.vue'
+import { isHttpUrl } from '../services/api.js'
 
 const props = defineProps({ markers: Array })
 
@@ -79,18 +80,27 @@ async function initMap() {
   }
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function popupHtml(m) {
   const rating = m.rating
     ? `<span class="kp-rating">★ ${Number(m.rating).toFixed(1)}</span>`
     : '<span class="kp-na">Belum ada rating</span>'
-  const link = m.google_maps_url
-    ? `<a href="${m.google_maps_url}" target="_blank" rel="noopener" class="kp-link">Buka di Google Maps ↗</a>`
+  const link = isHttpUrl(m.google_maps_url)
+    ? `<a href="${escapeHtml(m.google_maps_url)}" target="_blank" rel="noopener" class="kp-link">Buka di Google Maps ↗</a>`
     : ''
   return `
     <div class="kp-wrap">
-      <div class="kp-name">${m.name || ''}</div>
+      <div class="kp-name">${escapeHtml(m.name)}</div>
       <div class="kp-meta">${rating}</div>
-      <div class="kp-addr">${m.address || ''}</div>
+      <div class="kp-addr">${escapeHtml(m.address)}</div>
       ${link}
     </div>
     <style>

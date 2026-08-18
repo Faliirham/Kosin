@@ -22,9 +22,10 @@
         </div>
       </div>
 
-      <button v-if="kosList.length && !loading" class="btn-export" @click="exportCsv" :disabled="!displayKos.length">
-        <AppIcon name="arrow-down" :size="16" />
-        <span>Ekspor CSV</span>
+      <button v-if="kosList.length && !loading" class="btn-export" @click="exportCsv" :disabled="!displayKos.length || exporting">
+        <span v-if="exporting" class="spinner-sm"></span>
+        <AppIcon v-else name="arrow-down" :size="16" />
+        <span>{{ exporting ? 'Mengekspor…' : 'Ekspor CSV' }}</span>
       </button>
     </div>
 
@@ -128,6 +129,7 @@ const toast = inject('toast')
 const kosList = ref([])
 const loading = ref(false)
 const loadingMore = ref(false)
+const exporting = ref(false)
 const filtering = ref(false)
 const scraping = ref(false)
 const scrapingCity = ref('')
@@ -199,12 +201,26 @@ function openDetail(id) {
   navigate('detail', { id })
 }
 
-function exportCsv() {
-  if (!displayKos.value.length) return
-  const city = activeCity.value || 'semua'
-  const slug = String(city).toLowerCase().replace(/[^a-z0-9]+/gi, '-')
-  downloadCsv(`kos-${slug}.csv`, kosToCsv(displayKos.value))
-  toast(`${displayKos.value.length} kos diekspor ke CSV`, 'success')
+async function exportCsv() {
+  if (!displayKos.value.length || exporting.value) return
+  exporting.value = true
+  try {
+    const params = withFavorites({ ...filters.value, limit: 100 })
+    const first = await fetchKos({ ...params, offset: 0 })
+    let rows = first.data
+    for (let offset = 100; offset < first.total; offset += 100) {
+      const page = await fetchKos({ ...params, offset })
+      rows = rows.concat(page.data)
+    }
+    const city = activeCity.value || 'semua'
+    const slug = String(city).toLowerCase().replace(/[^a-z0-9]+/gi, '-')
+    downloadCsv(`kos-${slug}.csv`, kosToCsv(rows))
+    toast(`${rows.length} kos diekspor ke CSV`, 'success')
+  } catch (e) {
+    toast('Gagal mengekspor CSV: ' + (e.response?.data?.detail || e.message), 'error')
+  } finally {
+    exporting.value = false
+  }
 }
 
 async function loadKos(params = {}, reset = true) {

@@ -18,7 +18,7 @@
         </div>
       </div>
 
-      <div v-if="kos.website" class="info-item">
+      <div v-if="isHttpUrl(kos.website)" class="info-item">
         <span class="info-icon">
           <AppIcon name="globe" :size="17" />
         </span>
@@ -55,7 +55,7 @@
     </div>
 
     <div class="actions">
-      <button v-if="kos.google_maps_url" class="btn btn-maps" @click="openMaps">
+      <button v-if="isHttpUrl(kos.google_maps_url)" class="btn btn-maps" @click="openMaps">
         <AppIcon name="map-pin" :size="17" />
         Buka di Google Maps
         <AppIcon name="arrow-up-right" :size="15" />
@@ -101,7 +101,7 @@
 <script setup>
 import { ref, computed, inject } from 'vue'
 import AppIcon from '../AppIcon.vue'
-import { deleteKos } from '../../services/api.js'
+import { deleteKos, isHttpUrl } from '../../services/api.js'
 import { isFavorite, toggleFavorite } from '../../services/favorites.js'
 import { phoneToWa, directionsUrl, currentShareUrl } from '../../services/contact.js'
 
@@ -131,6 +131,7 @@ function prettyUrl(url) {
 }
 
 function openMaps() {
+  if (!isHttpUrl(props.kos.google_maps_url)) return
   window.open(props.kos.google_maps_url, '_blank', 'noopener')
 }
 

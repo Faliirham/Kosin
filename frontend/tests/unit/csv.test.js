@@ -44,6 +44,7 @@ describe('csv.js', () => {
   })
 
   it('downloadCsv triggers a file download via blob URL', () => {
+    vi.useFakeTimers()
     const revoke = vi.fn()
     vi.stubGlobal('URL', {
       createObjectURL: vi.fn(() => 'blob:fake'),
@@ -56,6 +57,18 @@ describe('csv.js', () => {
     })
     downloadCsv('kos-bandung.csv', 'Nama\nBandung')
     expect(click).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(1000)
     expect(revoke).toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
+  it('neutralizes spreadsheet formula injection', () => {
+    const csv = kosToCsv([
+      { ...KOS, name: '=HYPERLINK("http://evil")', phone: '+62 811', website: '-cmd', google_maps_url: '@import' },
+    ])
+    expect(csv).toContain("'=HYPERLINK")
+    expect(csv).toContain("'+62 811")
+    expect(csv).toContain("'-cmd")
+    expect(csv).toContain("'@import")
   })
 })
