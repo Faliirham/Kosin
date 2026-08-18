@@ -4,8 +4,8 @@
     role="button"
     tabindex="0"
     @click="$emit('click')"
-    @keydown.enter="$emit('click')"
-    @keydown.space.prevent="$emit('click')"
+    @keydown.enter.self="$emit('click')"
+    @keydown.space.self.prevent="$emit('click')"
     @mousemove="onCardMove"
   >
     <div class="card-photo">

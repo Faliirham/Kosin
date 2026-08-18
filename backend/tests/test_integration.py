@@ -128,6 +128,29 @@ async def test_list_kos_filters_city_search_rating(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_list_kos_filters_by_favorite_ids(client, db_session):
+    items = _seed(
+        db_session,
+        [
+            Kos(name="Kos Melati", city="Bandung"),
+            Kos(name="Kos Mawar", city="Bandung"),
+            Kos(name="Kos Anggrek", city="Jakarta"),
+        ],
+    )
+    await db_session.commit()
+
+    res = await client.get("/api/kos", params={"favorite_ids": f"{items[0].id},{items[2].id}"})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["total"] == 2
+    assert {k["name"] for k in body["data"]} == {"Kos Melati", "Kos Anggrek"}
+
+    res = await client.get("/api/kos", params={"favorite_ids": ""})
+    assert res.status_code == 200
+    assert res.json()["total"] == 0
+
+
+@pytest.mark.asyncio
 async def test_list_kos_pagination_is_stable_with_ties(client, db_session):
     now = datetime.utcnow()
     _seed(db_session, [Kos(name=f"Kos {i}", city="Bandung", created_at=now) for i in range(5)])

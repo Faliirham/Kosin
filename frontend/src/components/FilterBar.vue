@@ -233,6 +233,7 @@ function resetFilters() {
   filterDistrict.value = ''
   minRating.value = ''
   sort.value = 'created_at'
+  favoritesOnly.value = false
   emitFilterNow()
 }
 </script>

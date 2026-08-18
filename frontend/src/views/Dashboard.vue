@@ -72,7 +72,7 @@
             :kos="kos"
             @click="openDetail(kos.id)"
           />
-          <button v-if="!favoritesOnly && total > kosList.length" class="btn-load-more" @click="loadMore" :disabled="loadingMore">
+          <button v-if="total > kosList.length" class="btn-load-more" @click="loadMore" :disabled="loadingMore">
             <span v-if="loadingMore" class="spinner-sm"></span>
             <span>{{ loadingMore ? 'Memuat…' : `Muat lebih banyak (${kosList.length}/${total})` }}</span>
           </button>
@@ -116,7 +116,7 @@ import SkeletonGrid from '../components/SkeletonGrid.vue'
 import StateCard from '../components/StateCard.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { fetchKos, triggerScrape } from '../services/api.js'
-import { isFavorite } from '../services/favorites.js'
+import { isFavorite, favoriteIds } from '../services/favorites.js'
 import { addRecentSearch } from '../services/history.js'
 import { kosToCsv, downloadCsv } from '../services/csv.js'
 
@@ -147,6 +147,11 @@ const initialCity = props.prefillCity || ''
 const activeCity = computed(() => filters.value.city || initialCity || '')
 
 const favoritesOnly = computed(() => !!filters.value.favorites_only)
+
+function withFavorites(params) {
+  if (!params.favorites_only) return params
+  return { ...params, favorite_ids: [...favoriteIds()].join(',') }
+}
 
 const displayKos = computed(() => {
   if (!favoritesOnly.value) return kosList.value
@@ -209,7 +214,7 @@ async function loadKos(params = {}, reset = true) {
   loadingMore.value = false
   error.value = ''
   try {
-    const res = await fetchKos({ ...params, limit: PAGE_SIZE, offset: page.value * PAGE_SIZE })
+    const res = await fetchKos(withFavorites({ ...params, limit: PAGE_SIZE, offset: page.value * PAGE_SIZE }))
     if (seq !== requestSeq) return
     if (reset) {
       kosList.value = res.data
@@ -271,8 +276,9 @@ function handleFilter(params) {
   page.value = 0
   filtering.value = true
   error.value = ''
+  scrapeAreas.value = []
   const seq = ++requestSeq
-  fetchKos({ ...params, limit: PAGE_SIZE, offset: 0 })
+  fetchKos(withFavorites({ ...params, limit: PAGE_SIZE, offset: 0 }))
     .then(res => {
       if (seq !== requestSeq) return
       kosList.value = res.data
@@ -293,7 +299,7 @@ async function loadMore() {
   loadingMore.value = true
   try {
     const next = page.value + 1
-    const res = await fetchKos({ ...filters.value, limit: PAGE_SIZE, offset: next * PAGE_SIZE })
+    const res = await fetchKos(withFavorites({ ...filters.value, limit: PAGE_SIZE, offset: next * PAGE_SIZE }))
     if (seq !== requestSeq) return
     kosList.value = kosList.value.concat(res.data)
     total.value = res.total

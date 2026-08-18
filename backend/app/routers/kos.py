@@ -3,7 +3,7 @@ import logging
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete, or_
+from sqlalchemy import select, func, delete, or_, false
 
 from app import places
 from app.database import get_db
@@ -30,9 +30,21 @@ async def list_kos(
     order: str = Query("desc"),
     limit: int = Query(50, le=100),
     offset: int = Query(0, ge=0, le=10_000),
+    favorite_ids: str = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     query = select(Kos)
+
+    if favorite_ids is not None:
+        raw_ids = [part.strip() for part in favorite_ids.split(",") if part.strip()]
+        try:
+            parsed_ids = [UUID(part) for part in raw_ids]
+        except ValueError:
+            raise HTTPException(status_code=422, detail="favorite_ids harus berupa UUID yang valid")
+        if parsed_ids:
+            query = query.where(Kos.id.in_(parsed_ids))
+        else:
+            query = query.where(false())
 
     if city:
         query = query.where(Kos.city.ilike(f"%{_escape_like(city)}%", escape="\\"))
