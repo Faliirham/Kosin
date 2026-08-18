@@ -6,6 +6,9 @@ import './styles/toast.css'
 import './styles/transitions.css'
 import './styles/sections.css'
 import App from './App.vue'
+import { initTheme } from './services/theme.js'
+
+initTheme()
 
 const app = createApp(App)
 

@@ -46,33 +46,26 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import AppIcon from './AppIcon.vue'
-import { resolveTheme, toggleTheme } from '../services/theme.js'
+import { resolveTheme, toggleTheme, onThemeChange } from '../services/theme.js'
 
 defineProps({ activeView: { type: String, default: '' } })
 defineEmits(['navigate'])
 
 const isDark = ref(resolveTheme() === 'dark')
 
+let unsubscribe = null
+
 function onToggleTheme() {
   isDark.value = toggleTheme() === 'dark'
 }
 
-let media = null
-
-function syncFromSystem() {
-  try {
-    if (!localStorage.getItem('kos-theme')) isDark.value = media.matches
-  } catch {
-    isDark.value = media.matches
-  }
-}
-
 onMounted(() => {
-  media = window.matchMedia('(prefers-color-scheme: dark)')
-  media.addEventListener('change', syncFromSystem)
+  unsubscribe = onThemeChange(theme => {
+    isDark.value = theme === 'dark'
+  })
 })
 
 onBeforeUnmount(() => {
-  if (media) media.removeEventListener('change', syncFromSystem)
+  if (unsubscribe) unsubscribe()
 })
 </script>

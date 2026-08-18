@@ -1,5 +1,12 @@
 const STORAGE_KEY = 'kos-theme'
 
+const listeners = new Set()
+
+function emitThemeChange() {
+  const theme = resolveTheme()
+  for (const fn of listeners) fn(theme)
+}
+
 export function getStoredTheme() {
   try {
     return localStorage.getItem(STORAGE_KEY)
@@ -28,8 +35,16 @@ export function applyTheme(theme) {
 export function initTheme() {
   applyTheme(resolveTheme())
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-    if (!getStoredTheme()) applyTheme(e.matches ? 'dark' : 'light')
+    if (!getStoredTheme()) {
+      applyTheme(e.matches ? 'dark' : 'light')
+      emitThemeChange()
+    }
   })
+}
+
+export function onThemeChange(fn) {
+  listeners.add(fn)
+  return () => listeners.delete(fn)
 }
 
 export function setTheme(theme) {
@@ -39,6 +54,7 @@ export function setTheme(theme) {
     // storage tidak tersedia — tetap terapkan untuk sesi ini
   }
   applyTheme(theme)
+  emitThemeChange()
 }
 
 export function toggleTheme() {
