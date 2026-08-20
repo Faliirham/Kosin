@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import KosCard from '../../src/components/KosCard.vue'
-import { clearFavorites, toggleFavorite } from '../../src/services/favorites'
+import KosCard from '../../components/KosCard.vue'
+import { clearFavorites, toggleFavorite } from '../../utils/favorites'
 
 const baseKos = {
   id: '1',

@@ -4,7 +4,7 @@ import {
   removeRecentSearch,
   clearRecentSearches,
   recentSearches,
-} from '../../src/services/history'
+} from '../../utils/history'
 
 describe('history.js', () => {
   beforeEach(() => {

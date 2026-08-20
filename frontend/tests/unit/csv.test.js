@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { kosToCsv, downloadCsv } from '../../src/services/csv'
+import { kosToCsv, downloadCsv } from '../../utils/csv'
 
 const KOS = {
   name: 'Kos "Anggrek", Bandung',

@@ -6,7 +6,7 @@ import {
   favoriteIds,
   favoritePlaceIds,
   clearFavorites,
-} from '../../src/services/favorites'
+} from '../../utils/favorites'
 
 const KOS_A = { id: 'a-1', place_id: 'ChIJ-a', name: 'Kos A', city: 'Bandung' }
 const KOS_B = { id: 'b-2', place_id: 'ChIJ-b', name: 'Kos B', city: 'Jakarta' }
