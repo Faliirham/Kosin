@@ -9,6 +9,7 @@ from app.scraper import (
     _expand_keywords,
     _extract_city,
     _extract_district,
+    _extract_kelurahan,
     _geocode_city,
     _haversine_km,
     _place_to_kos,
@@ -100,20 +101,27 @@ def test_extract_city_falls_back():
 def test_extract_district_variants():
     assert _extract_district("Jl. A, Kecamatan Coblong, Kota Bandung") == "Kecamatan Coblong"
     assert _extract_district("Jl. B, Kec. Cidadap, Kota Bandung") == "Kec. Cidadap"
-    assert _extract_district("Jl. C, Kelurahan Dago, Kota Bandung") == "Kelurahan Dago"
-    assert _extract_district("Jl. D, Kel. Ciumbuleuit, Kota Bandung") == "Kel. Ciumbuleuit"
+    assert _extract_district("Jl. C, Kelurahan Dago, Kec. Coblong, Kota Bandung") == "Kec. Coblong"
+
+
+def test_extract_kelurahan_variants():
+    assert _extract_kelurahan("Jl. C, Kelurahan Dago, Kec. Coblong, Kota Bandung") == "Kelurahan Dago"
+    assert _extract_kelurahan("Jl. D, Kel. Ciumbuleuit, Kec. Coblong, Kota Bandung") == "Kel. Ciumbuleuit"
+    assert _extract_kelurahan("Jl. E, Kecamatan Coblong, Kota Bandung") is None
 
 
 def test_extract_district_none():
     assert _extract_district(None) is None
     assert _extract_district("Jl. Sudirman, Kota Bandung") is None
+    assert _extract_kelurahan(None) is None
+    assert _extract_kelurahan("Jl. Sudirman, Kota Bandung") is None
 
 
 def test_place_to_kos_maps_all_fields():
     place = {
         "place_id": "abc",
         "name": "Kos Melati",
-        "address": "Jl. Dago No. 1, Kec. Cidadap, Kota Bandung, Jawa Barat",
+        "address": "Jl. Dago No. 1, Kelurahan Dago, Kec. Cidadap, Kota Bandung, Jawa Barat",
         "latitude": -6.8,
         "longitude": 107.6,
         "rating": 4.5,
@@ -130,6 +138,7 @@ def test_place_to_kos_maps_all_fields():
     assert kos.name == "Kos Melati"
     assert kos.city == "Kota Bandung"
     assert kos.district == "Kec. Cidadap"
+    assert kos.kelurahan == "Kelurahan Dago"
     assert kos.price_range == "Mahal"
     assert kos.place_id == "abc"
     assert kos.rating == 4.5
@@ -140,6 +149,7 @@ def test_place_to_kos_missing_fields_defaulted():
     assert kos.name == "Tanpa Nama"
     assert kos.city == "Bandung"
     assert kos.district is None
+    assert kos.kelurahan is None
     assert kos.price_range is None
     assert kos.rating is None
 

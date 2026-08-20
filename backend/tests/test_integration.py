@@ -34,7 +34,14 @@ def _stub_scrape(monkeypatch, data):
 @pytest.mark.asyncio
 async def test_scrape_upsert_inserts_new_rows(client, db_session, monkeypatch):
     data = [
-        KosCreate(name="Kos A", place_id="ChIJa", city="Bandung", district="Kec. Coblong", rating=4.0),
+        KosCreate(
+            name="Kos A",
+            place_id="ChIJa",
+            city="Bandung",
+            district="Kec. Coblong",
+            kelurahan="Kel. Dago",
+            rating=4.0,
+        ),
         KosCreate(name="Kos B", place_id="ChIJb", city="Bandung", district="Kec. Coblong"),
     ]
     _stub_scrape(monkeypatch, data)
@@ -49,6 +56,8 @@ async def test_scrape_upsert_inserts_new_rows(client, db_session, monkeypatch):
     assert body["areas"][0]["count"] == 2
     rows = (await db_session.execute(select(Kos))).scalars().all()
     assert len(rows) == 2
+    by_id = {k.place_id: k for k in rows}
+    assert by_id["ChIJa"].kelurahan == "Kel. Dago"
 
 
 @pytest.mark.asyncio
@@ -134,7 +143,7 @@ async def test_list_kos_filters_city_search_rating(client, db_session):
     _seed(
         db_session,
         [
-            Kos(name="Kos Melati", city="Bandung", district="Kec. Coblong", rating=4.5),
+            Kos(name="Kos Melati", city="Bandung", district="Kec. Coblong", kelurahan="Kel. Dago", rating=4.5),
             Kos(name="Kos Mawar", city="Bandung", district="Kec. Cidadap", rating=3.0),
             Kos(name="Kos Anggrek", city="Jakarta", district="Kec. Menteng", rating=4.8),
         ],
@@ -154,6 +163,14 @@ async def test_list_kos_filters_city_search_rating(client, db_session):
     res = await client.get("/api/kos", params={"district": "Menteng"})
     assert res.json()["total"] == 1
     assert res.json()["data"][0]["name"] == "Kos Anggrek"
+
+    res = await client.get("/api/kos", params={"kelurahan": "Dago"})
+    assert res.json()["total"] == 1
+    assert res.json()["data"][0]["name"] == "Kos Melati"
+
+    res = await client.get("/api/kos", params={"search": "Cidadap"})
+    assert res.json()["total"] == 1
+    assert res.json()["data"][0]["name"] == "Kos Mawar"
 
 
 @pytest.mark.asyncio
