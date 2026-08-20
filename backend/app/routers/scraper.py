@@ -37,6 +37,7 @@ async def trigger_scrape(req: ScrapeRequest, db: AsyncSession = Depends(get_db))
                 city=req.city,
                 keyword=req.keyword,
                 district=req.district,
+                kelurahan=req.kelurahan,
                 lat=req.lat,
                 lng=req.lng,
                 radius_km=req.radius_km,

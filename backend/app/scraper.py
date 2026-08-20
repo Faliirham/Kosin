@@ -117,11 +117,23 @@ def _extract_city(address: str | None, fallback: str) -> str:
 
 
 def _extract_district(address: str | None) -> str | None:
-    """Ekstrak kecamatan/kelurahan dari formattedAddress Google."""
+    """Ekstrak kecamatan dari formattedAddress Google."""
     if not address:
         return None
     parts = [p.strip() for p in address.split(",")]
-    for marker in ("Kecamatan ", "Kec. ", "Kelurahan ", "Kel. "):
+    for marker in ("Kecamatan ", "Kec. "):
+        for part in parts:
+            if part.startswith(marker):
+                return part
+    return None
+
+
+def _extract_kelurahan(address: str | None) -> str | None:
+    """Ekstrak kelurahan dari formattedAddress Google."""
+    if not address:
+        return None
+    parts = [p.strip() for p in address.split(",")]
+    for marker in ("Kelurahan ", "Kel. "):
         for part in parts:
             if part.startswith(marker):
                 return part
@@ -236,6 +248,7 @@ def _place_to_kos(place: dict, city: str) -> KosCreate:
         address=address,
         city=_extract_city(address, city),
         district=_extract_district(address),
+        kelurahan=_extract_kelurahan(address),
         latitude=place.get("latitude"),
         longitude=place.get("longitude"),
         rating=place.get("rating"),
@@ -253,11 +266,12 @@ async def scrape_kos(
     city: str,
     keyword: str = "kos kosan",
     district: str | None = None,
+    kelurahan: str | None = None,
     lat: float | None = None,
     lng: float | None = None,
     radius_km: float | None = None,
 ) -> list[KosCreate]:
-    """Scrape kos-kosan via Google Places API dengan pembatas lokasi kota/kecamatan.
+    """Scrape kos-kosan via Google Places API dengan pembatas lokasi kota/kecamatan/kelurahan.
 
     Mode kota (tanpa lat/lng): bounding box kota dipecah menjadi sel-sel grid
     (default 2x2) dan setiap varian keyword dijalankan per sel secara paralel,
@@ -267,7 +281,7 @@ async def scrape_kos(
     dengan filter jarak radius seperti sebelumnya.
     """
     radius = radius_km or DEFAULT_RADIUS_KM
-    location_query = f"{district}, {city}" if district else city
+    location_query = ", ".join(p for p in (kelurahan, district, city) if p) or city
     direct_mode = lat is not None and lng is not None
     keywords = _expand_keywords(keyword)
 
