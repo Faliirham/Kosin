@@ -22,9 +22,11 @@ async def run_migrations(conn) -> None:
         await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS place_id VARCHAR(255)"))
         await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS source VARCHAR(20)"))
         await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS district VARCHAR(100)"))
+        await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS kelurahan VARCHAR(100)"))
     # Indeks pendukung dedup & pagination (PG/SQLite memperbolehkan banyak NULL pada UNIQUE)
     await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_kos_place_id ON kos (place_id)"))
     await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_kos_created_at ON kos (created_at)"))
+    await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_kos_kelurahan ON kos (kelurahan)"))
 
 
 @asynccontextmanager

@@ -11,6 +11,7 @@ class KosBase(BaseModel):
     address: Optional[str] = None
     city: Optional[str] = None
     district: Optional[str] = None
+    kelurahan: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     rating: Optional[float] = None
@@ -38,6 +39,7 @@ class ScrapeRequest(BaseModel):
     city: str
     keyword: str = "kos kosan"
     district: Optional[str] = None
+    kelurahan: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
     radius_km: Optional[float] = None
