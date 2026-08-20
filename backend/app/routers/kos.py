@@ -24,6 +24,7 @@ def _escape_like(value: str) -> str:
 async def list_kos(
     city: str = Query(None),
     district: str = Query(None),
+    kelurahan: str = Query(None),
     search: str = Query(None),
     min_rating: float = Query(None),
     sort: str = Query("created_at"),
@@ -50,6 +51,8 @@ async def list_kos(
         query = query.where(Kos.city.ilike(f"%{_escape_like(city)}%", escape="\\"))
     if district:
         query = query.where(Kos.district.ilike(f"%{_escape_like(district)}%", escape="\\"))
+    if kelurahan:
+        query = query.where(Kos.kelurahan.ilike(f"%{_escape_like(kelurahan)}%", escape="\\"))
     if search:
         pattern = f"%{_escape_like(search)}%"
         query = query.where(
@@ -58,6 +61,7 @@ async def list_kos(
                 Kos.address.ilike(pattern, escape="\\"),
                 Kos.city.ilike(pattern, escape="\\"),
                 Kos.district.ilike(pattern, escape="\\"),
+                Kos.kelurahan.ilike(pattern, escape="\\"),
             )
         )
     if min_rating is not None:
