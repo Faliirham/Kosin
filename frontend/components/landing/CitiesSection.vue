@@ -2,7 +2,7 @@
   <section class="section" id="kota">
     <div class="section-head" v-reveal>
       <span class="eyebrow">Kota populer</span>
-      <h2 class="section-title">Mau pindah ke mana?</h2>
+      <h2 class="section-title"><SplitText text="Mau pindah ke mana?" /></h2>
       <p class="section-sub">Pilih kota favoritmu untuk langsung melihat kos-kosan di sekitarnya.</p>
     </div>
 

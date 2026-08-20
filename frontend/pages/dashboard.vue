@@ -67,12 +67,14 @@
     <div v-else-if="kosList.length" class="content">
       <div class="list-wrap">
         <div class="kos-list" :class="{ 'is-filtering': filtering || (scraping && kosList.length) }">
-          <KosCard
+          <TiltCard
             v-for="kos in displayKos"
             :key="kos.id"
-            :kos="kos"
-            @click="openDetail(kos.id)"
-          />
+            :max="5"
+            :scale="1.01"
+          >
+            <KosCard :kos="kos" @click="openDetail(kos.id)" />
+          </TiltCard>
           <button v-if="total > kosList.length" class="btn-load-more" @click="loadMore" :disabled="loadingMore">
             <span v-if="loadingMore" class="spinner-sm"></span>
             <span>{{ loadingMore ? 'Memuat…' : `Muat lebih banyak (${kosList.length}/${total})` }}</span>

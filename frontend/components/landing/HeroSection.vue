@@ -3,6 +3,7 @@
     <div class="hero-bg" aria-hidden="true">
       <img class="hero-photo" :src="heroImg" alt="" />
       <div class="hero-tint"></div>
+      <ParticlesField :count="45" color="96, 165, 250" :link-distance="130" />
       <div class="aurora">
         <span
           class="aurora-blob"
@@ -23,7 +24,7 @@
       <div class="hero-copy">
         <span class="hero-badge">
           <AppIcon name="map-pin" :size="14" />
-          Data langsung dari Google Maps
+          <TextScramble text="Data langsung dari Google Maps" />
         </span>
 
         <h1 class="hero-title">
@@ -61,14 +62,16 @@
       </div>
 
       <div class="hero-visual">
-        <div class="hero-card-main">
-          <img :src="heroImg" :alt="altHero" />
-          <div class="hero-card-shade"></div>
-          <div class="hero-card-live">
-            <span class="live-dot"></span>
-            Live dari Google Maps
+        <TiltCard :max="6" :scale="1.015" class="hero-tilt">
+          <div class="hero-card-main">
+            <img :src="heroImg" :alt="altHero" />
+            <div class="hero-card-shade"></div>
+            <div class="hero-card-live">
+              <span class="live-dot"></span>
+              Live dari Google Maps
+            </div>
           </div>
-        </div>
+        </TiltCard>
 
         <div class="float-card float-top">
           <span class="float-icon">

@@ -2,7 +2,7 @@
   <section class="section section-alt" id="cara-kerja">
     <div class="section-head">
       <span class="eyebrow">Cara kerja</span>
-      <h2 class="section-title">Tiga langkah sederhana</h2>
+      <h2 class="section-title"><SplitText text="Tiga langkah sederhana" /></h2>
     </div>
 
     <div class="steps">

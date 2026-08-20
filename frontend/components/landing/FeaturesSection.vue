@@ -2,7 +2,9 @@
   <section class="section" id="fitur">
     <div class="section-head" v-reveal>
       <span class="eyebrow">Kenapa Kos Finder</span>
-      <h2 class="section-title">Cari kos lebih pintar,<br />bukan lebih capek</h2>
+      <h2 class="section-title">
+        <SplitText text="Cari kos lebih pintar," /><br /><SplitText text="bukan lebih capek" :delay="300" />
+      </h2>
       <p class="section-sub">
         Kami menggabungkan data Google Maps dengan tampilan yang jujur, supaya kamu
         bisa membandingkan kos tanpa harus keliling kota satu per satu.

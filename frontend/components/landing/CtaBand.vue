@@ -15,7 +15,7 @@
           style="width: 300px; height: 300px; left: 38%; bottom: -180px; background: radial-gradient(circle, rgba(129, 140, 248, 0.4), transparent 70%)"
         ></span>
       </div>
-      <h2 class="cta-title">Siap pindah? Mulai cari kosmu sekarang.</h2>
+      <h2 class="cta-title"><SplitText text="Siap pindah? Mulai cari kosmu sekarang." /></h2>
       <p class="cta-sub">Gratis, tanpa daftar, dan langsung menampilkan data dari Google Maps.</p>
       <button class="btn-light-lg" v-magnetic @click="$emit('go-city', '')">
         Jelajahi kos
