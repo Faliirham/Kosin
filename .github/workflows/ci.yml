@@ -38,8 +38,8 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
         working-directory: frontend
-      - name: Build
-        run: npm run build
+      - name: Build (SSG generate)
+        run: npm run generate
         working-directory: frontend
 
   frontend-e2e:

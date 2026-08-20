@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test('theme toggle: dark mode applied, persisted, and header icon flips', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
-  await page.goto('/#/landing')
+  await page.goto('/')
   await page.addStyleTag({ content: 'img { display: none !important; }' })
 
   const html = page.locator('html')
