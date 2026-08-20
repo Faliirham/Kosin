@@ -14,34 +14,49 @@ describe('FilterBar.vue', () => {
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
   })
 
-  it('emits scrape with city, keyword, and district on submit', async () => {
+  it('emits scrape with city, keyword, district, and kelurahan on submit', async () => {
     const wrapper = mount(FilterBar, { props: { loading: false, scraping: false, filters: {} } })
-    await wrapper.get('input[aria-label="Nama kota"]').setValue('Bandung')
+    await wrapper.get('input[aria-label="Nama kota"]').setValue('Surabaya')
     await wrapper.get('input[aria-label="Keyword pencarian"]').setValue('kos murah')
-    await wrapper.get('input[aria-label="Kecamatan atau kelurahan"]').setValue('Coblong')
-    await wrapper.get('form.scrape-row').trigger('submit')
+    await wrapper.get('input[aria-label="Kecamatan"]').setValue('Tandes')
+    await wrapper.get('input[aria-label="Kelurahan"]').setValue('Manukan')
+    await wrapper.get('form.scrape-form').trigger('submit')
     expect(wrapper.emitted('scrape')[0][0]).toEqual({
-      city: 'Bandung',
+      city: 'Surabaya',
       keyword: 'kos murah',
-      district: 'Coblong',
+      district: 'Tandes',
+      kelurahan: 'Manukan',
     })
   })
 
-  it('emits district as undefined when left empty', async () => {
+  it('emits district and kelurahan as undefined when left empty', async () => {
     const wrapper = mount(FilterBar, { props: { loading: false, scraping: false, filters: {} } })
     await wrapper.get('input[aria-label="Nama kota"]').setValue('Jakarta')
-    await wrapper.get('form.scrape-row').trigger('submit')
+    await wrapper.get('form.scrape-form').trigger('submit')
     expect(wrapper.emitted('scrape')[0][0].district).toBeUndefined()
+    expect(wrapper.emitted('scrape')[0][0].kelurahan).toBeUndefined()
   })
 
   it('syncs filter controls from the filters prop', async () => {
     const wrapper = mount(FilterBar, {
       props: { loading: false, scraping: false, filters: { city: 'Bandung', min_rating: 4, sort: 'rating' } },
     })
-    await wrapper.setProps({ filters: { city: 'Bandung', min_rating: 4, sort: 'rating' } })
+    await wrapper.setProps({ filters: { city: 'Bandung', kelurahan: 'Dago', min_rating: 4, sort: 'rating' } })
     expect(wrapper.get('input[aria-label="Filter kota"]').element.value).toBe('Bandung')
+    expect(wrapper.get('input[aria-label="Filter kelurahan"]').element.value).toBe('Dago')
     expect(wrapper.get('select[aria-label="Rating minimal"]').element.value).toBe('4')
     expect(wrapper.get('select[aria-label="Urutkan"]').element.value).toBe('rating')
+  })
+
+  it('emits kelurahan in the filter payload', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(FilterBar, { props: { loading: false, scraping: false, filters: {} } })
+    await wrapper.get('input[aria-label="Filter kelurahan"]').setValue('Manukan')
+    vi.advanceTimersByTime(400)
+    const payload = wrapper.emitted('filter')[0][0]
+    expect(payload.kelurahan).toBe('Manukan')
+    expect(payload.district).toBeUndefined()
+    vi.useRealTimers()
   })
 
   it('emits filter (debounced) when typing search', async () => {
@@ -72,17 +87,19 @@ describe('FilterBar.vue', () => {
   })
 
   it('renders recent search chips and re-runs the search on click', async () => {
-    addRecentSearch({ city: 'Bandung', district: 'Coblong', keyword: 'kos murah' })
+    addRecentSearch({ city: 'Surabaya', district: 'Tandes', kelurahan: 'Manukan', keyword: 'kos murah' })
     const wrapper = mount(FilterBar, { props: { loading: false, scraping: false, filters: {} } })
 
     const chip = wrapper.get('.recent-chip')
-    expect(chip.text()).toContain('Bandung')
-    expect(chip.text()).toContain('Coblong')
+    expect(chip.text()).toContain('Surabaya')
+    expect(chip.text()).toContain('Tandes')
+    expect(chip.text()).toContain('Manukan')
 
     await chip.trigger('click')
     expect(wrapper.emitted('scrape')[0][0]).toEqual({
-      city: 'Bandung',
-      district: 'Coblong',
+      city: 'Surabaya',
+      district: 'Tandes',
+      kelurahan: 'Manukan',
       keyword: 'kos murah',
     })
   })

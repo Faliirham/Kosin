@@ -16,16 +16,21 @@ describe('history.js', () => {
     expect(recentSearches()).toEqual([])
   })
 
-  it('stores a search with city, district, and keyword', () => {
-    addRecentSearch({ city: 'Bandung', district: 'Coblong', keyword: 'kos murah' })
+  it('stores a search with city, district, kelurahan, and keyword', () => {
+    addRecentSearch({ city: 'Bandung', district: 'Coblong', kelurahan: 'Dago', keyword: 'kos murah' })
     expect(recentSearches()).toEqual([
-      { city: 'Bandung', district: 'Coblong', keyword: 'kos murah' },
+      { city: 'Bandung', district: 'Coblong', kelurahan: 'Dago', keyword: 'kos murah' },
     ])
   })
 
-  it('defaults missing keyword and district', () => {
+  it('defaults missing keyword, district, and kelurahan', () => {
     addRecentSearch({ city: 'Jakarta' })
-    expect(recentSearches()[0]).toEqual({ city: 'Jakarta', district: '', keyword: 'kos kosan' })
+    expect(recentSearches()[0]).toEqual({
+      city: 'Jakarta',
+      district: '',
+      kelurahan: '',
+      keyword: 'kos kosan',
+    })
   })
 
   it('ignores empty city', () => {
