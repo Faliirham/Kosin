@@ -1,9 +1,23 @@
 <template>
   <section class="cta-band">
     <div class="cta-inner" v-reveal>
+      <div class="aurora" aria-hidden="true">
+        <span
+          class="aurora-blob"
+          style="width: 420px; height: 420px; left: -140px; top: -160px; background: radial-gradient(circle, rgba(37, 99, 235, 0.55), transparent 70%)"
+        ></span>
+        <span
+          class="aurora-blob"
+          style="width: 340px; height: 340px; right: -80px; top: -100px; background: radial-gradient(circle, rgba(96, 165, 250, 0.5), transparent 70%)"
+        ></span>
+        <span
+          class="aurora-blob"
+          style="width: 300px; height: 300px; left: 38%; bottom: -180px; background: radial-gradient(circle, rgba(129, 140, 248, 0.4), transparent 70%)"
+        ></span>
+      </div>
       <h2 class="cta-title">Siap pindah? Mulai cari kosmu sekarang.</h2>
       <p class="cta-sub">Gratis, tanpa daftar, dan langsung menampilkan data dari Google Maps.</p>
-      <button class="btn-light-lg" @click="$emit('go-city', '')">
+      <button class="btn-light-lg" v-magnetic @click="$emit('go-city', '')">
         Jelajahi kos
         <AppIcon name="arrow-right" :size="18" />
       </button>
@@ -78,7 +92,6 @@ defineEmits(['go-city'])
 }
 
 .btn-light-lg:hover {
-  transform: translateY(-2px);
   box-shadow: 0 16px 32px rgba(15, 23, 42, 0.28);
 }
 

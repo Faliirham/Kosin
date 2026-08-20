@@ -19,7 +19,7 @@
         </div>
       </article>
 
-      <article class="bento-card bento-accent" v-reveal>
+      <article class="bento-card bento-accent spotlight" v-reveal @mousemove="onMove">
         <span class="bento-icon">
           <AppIcon name="star" filled :size="22" />
         </span>
@@ -27,7 +27,7 @@
         <p>Penilaian dan ulasan diambil langsung dari Google Maps — bukan angka rekaan.</p>
       </article>
 
-      <article class="bento-card" v-reveal>
+      <article class="bento-card spotlight" v-reveal @mousemove="onMove">
         <span class="bento-icon">
           <AppIcon name="map-pin" :size="22" />
         </span>
@@ -35,7 +35,7 @@
         <p>Google Maps menampilkan posisi tiap kos secara akurat, dekat dengan kampus atau kantormu.</p>
       </article>
 
-      <article class="bento-card" v-reveal>
+      <article class="bento-card spotlight" v-reveal @mousemove="onMove">
         <span class="bento-icon">
           <AppIcon name="layers" :size="22" />
         </span>
@@ -62,6 +62,13 @@ const imgRoom1 = 'https://picsum.photos/seed/kos-room-1/1000/700'
 const imgRoom2 = 'https://picsum.photos/seed/kos-room-2/800/1000'
 const altRoom1 = 'Kamar kos dengan pencahayaan alami'
 const altRoom2 = 'Sudut kamar kos yang rapi dan modern'
+
+function onMove(e) {
+  const el = e.currentTarget
+  const rect = el.getBoundingClientRect()
+  el.style.setProperty('--mx', `${e.clientX - rect.left}px`)
+  el.style.setProperty('--my', `${e.clientY - rect.top}px`)
+}
 </script>
 
 <style scoped>

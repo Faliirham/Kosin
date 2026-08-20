@@ -10,7 +10,7 @@
       <button
         v-for="(c, i) in cityCards"
         :key="c.name"
-        class="city-card"
+        class="city-card spotlight"
         :class="{ 'city-card-featured': i === 0 }"
         v-reveal
         @mousemove="onCardMove"
@@ -70,24 +70,6 @@ const cityCards = [
   color: var(--ink);
   overflow: hidden;
   transition: transform 0.22s, box-shadow 0.22s, border-color 0.22s;
-}
-
-.city-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 0.3s;
-  background: radial-gradient(
-    340px circle at var(--mx, 50%) var(--my, 50%),
-    var(--accent-soft),
-    transparent 65%
-  );
-  pointer-events: none;
-}
-
-.city-card:hover::before {
-  opacity: 0.8;
 }
 
 .city-card-featured {

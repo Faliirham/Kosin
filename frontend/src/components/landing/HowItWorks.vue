@@ -6,7 +6,7 @@
     </div>
 
     <div class="steps">
-      <article class="step" v-reveal>
+      <article class="step spotlight" v-reveal @mousemove="onMove">
         <span class="step-num">01</span>
         <div class="step-body">
           <h3>Masukkan kota</h3>
@@ -18,7 +18,7 @@
         <AppIcon name="arrow-right" :size="18" />
         <span class="connector-line"></span>
       </div>
-      <article class="step" v-reveal>
+      <article class="step spotlight" v-reveal @mousemove="onMove">
         <span class="step-num">02</span>
         <div class="step-body">
           <h3>Kami cari dari Google Maps</h3>
@@ -30,7 +30,7 @@
         <AppIcon name="arrow-right" :size="18" />
         <span class="connector-line"></span>
       </div>
-      <article class="step" v-reveal>
+      <article class="step spotlight" v-reveal @mousemove="onMove">
         <span class="step-num">03</span>
         <div class="step-body">
           <h3>Bandingkan &amp; pilih</h3>
@@ -40,7 +40,7 @@
     </div>
 
     <div class="cta-row" v-reveal>
-      <button class="btn-primary-lg" @click="$emit('go-city', '')">
+      <button class="btn-primary-lg" v-magnetic @click="$emit('go-city', '')">
         Mulai cari kos
         <AppIcon name="arrow-right" :size="18" />
       </button>
@@ -52,6 +52,13 @@
 import AppIcon from '../AppIcon.vue'
 
 defineEmits(['go-city'])
+
+function onMove(e) {
+  const el = e.currentTarget
+  const rect = el.getBoundingClientRect()
+  el.style.setProperty('--mx', `${e.clientX - rect.left}px`)
+  el.style.setProperty('--my', `${e.clientY - rect.top}px`)
+}
 </script>
 
 <style scoped>
@@ -137,7 +144,7 @@ defineEmits(['go-city'])
 
 .btn-primary-lg:hover {
   background: var(--accent-strong);
-  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgba(37, 99, 235, 0.4);
 }
 
 @media (max-width: 980px) {

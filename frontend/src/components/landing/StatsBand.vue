@@ -1,32 +1,116 @@
 <template>
-  <section class="stats-band" aria-label="Statistik">
+  <section ref="sectionRef" class="stats-band" aria-label="Statistik">
     <div class="stats-inner" v-reveal>
-      <div class="stat-item">
-        <span class="stat-value">{{ stats.total }}</span>
-        <span class="stat-label">kos tercatat</span>
-      </div>
-      <div class="stat-divider" aria-hidden="true"></div>
-      <div class="stat-item">
-        <span class="stat-value">{{ stats.cities }}</span>
-        <span class="stat-label">kota tercakup</span>
-      </div>
-      <div class="stat-divider" aria-hidden="true"></div>
-      <div class="stat-item">
-        <span class="stat-value">{{ stats.rating }}</span>
-        <span class="stat-label">rata-rata rating</span>
-      </div>
-      <div class="stat-divider" aria-hidden="true"></div>
-      <div class="stat-item">
-        <span class="stat-value">24 jam</span>
-        <span class="stat-label">cache detail Google</span>
-      </div>
+      <template v-for="(it, i) in items" :key="it.key">
+        <div class="stat-item">
+          <span class="stat-value">{{ display(it) }}</span>
+          <span class="stat-label">{{ it.label }}</span>
+        </div>
+        <div v-if="i < items.length - 1" class="stat-divider" aria-hidden="true"></div>
+      </template>
     </div>
   </section>
 </template>
 
 <script setup>
-defineProps({
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+
+const props = defineProps({
   stats: { type: Object, default: () => ({ total: '1.200+', cities: '30+', rating: '4,6' }) },
+})
+
+const items = computed(() => [
+  { key: 'total', label: 'kos tercatat', raw: props.stats.total },
+  { key: 'cities', label: 'kota tercakup', raw: props.stats.cities },
+  { key: 'rating', label: 'rata-rata rating', raw: props.stats.rating },
+  { key: 'cache', label: 'cache detail Google', raw: '24 jam' },
+])
+
+function parseStat(raw) {
+  const s = String(raw).trim()
+  const m = s.match(/^([\d.,]+)(.*)$/)
+  if (!m) return null
+  const num = parseFloat(m[1].replace(/\./g, '').replace(',', '.'))
+  if (Number.isNaN(num)) return null
+  return { num, suffix: m[2], decimals: m[1].includes(',') ? 1 : 0 }
+}
+
+const sectionRef = ref(null)
+const current = ref({})
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+let started = false
+let rafId = 0
+let observer = null
+
+function applyTargets(instant) {
+  for (const it of items.value) {
+    const p = parseStat(it.raw)
+    if (p) current.value[it.key] = instant ? p.num : 0
+  }
+}
+
+function startCountUp() {
+  if (started) return
+  started = true
+  const entries = {}
+  for (const it of items.value) {
+    const p = parseStat(it.raw)
+    if (p) entries[it.key] = p
+  }
+  if (reducedMotion) {
+    applyTargets(true)
+    return
+  }
+  applyTargets(false)
+  const dur = 1400
+  const t0 = performance.now()
+  const step = (now) => {
+    const prog = Math.min((now - t0) / dur, 1)
+    const eased = 1 - Math.pow(1 - prog, 3)
+    for (const key in entries) {
+      current.value[key] = entries[key].num * eased
+    }
+    if (prog < 1) rafId = requestAnimationFrame(step)
+  }
+  rafId = requestAnimationFrame(step)
+}
+
+function display(it) {
+  if (!started) return it.raw
+  const p = parseStat(it.raw)
+  if (!p) return it.raw
+  const v = current.value[it.key] ?? 0
+  const fmt = new Intl.NumberFormat('id-ID', {
+    minimumFractionDigits: p.decimals,
+    maximumFractionDigits: p.decimals,
+  })
+  return fmt.format(v) + p.suffix
+}
+
+onMounted(() => {
+  observer = new IntersectionObserver(
+    ([entry]) => {
+      if (entry.isIntersecting) {
+        startCountUp()
+        observer.disconnect()
+      }
+    },
+    { threshold: 0.3 }
+  )
+  if (sectionRef.value) observer.observe(sectionRef.value)
+})
+
+watch(
+  () => props.stats,
+  () => {
+    if (started) applyTargets(true)
+  },
+  { deep: true }
+)
+
+onBeforeUnmount(() => {
+  cancelAnimationFrame(rafId)
+  if (observer) observer.disconnect()
 })
 </script>
 

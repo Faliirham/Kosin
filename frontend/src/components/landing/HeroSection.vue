@@ -3,8 +3,20 @@
     <div class="hero-bg" aria-hidden="true">
       <img class="hero-photo" :src="heroImg" alt="" />
       <div class="hero-tint"></div>
-      <div class="hero-blob blob-a"></div>
-      <div class="hero-blob blob-b"></div>
+      <div class="aurora">
+        <span
+          class="aurora-blob"
+          style="width: 460px; height: 460px; left: -160px; top: -140px; background: radial-gradient(circle, rgba(96, 165, 250, 0.5), transparent 70%)"
+        ></span>
+        <span
+          class="aurora-blob"
+          style="width: 380px; height: 380px; right: 26%; top: -80px; background: radial-gradient(circle, rgba(129, 140, 248, 0.4), transparent 70%)"
+        ></span>
+        <span
+          class="aurora-blob"
+          style="width: 340px; height: 340px; right: -60px; bottom: -140px; background: radial-gradient(circle, rgba(37, 99, 235, 0.5), transparent 70%)"
+        ></span>
+      </div>
     </div>
 
     <div class="hero-inner">
@@ -15,7 +27,7 @@
         </span>
 
         <h1 class="hero-title">
-          Temukan kos yang <em>terasa seperti rumah</em>
+          Temukan kos yang <em class="shine">terasa seperti rumah</em>
         </h1>
 
         <p class="hero-sub">
@@ -146,29 +158,6 @@ function submitSearch() {
     linear-gradient(100deg, var(--dark) 30%, rgba(15, 23, 42, 0.82));
 }
 
-.hero-blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.5;
-}
-
-.blob-a {
-  width: 380px;
-  height: 380px;
-  left: -120px;
-  top: -80px;
-  background: radial-gradient(circle, rgba(96, 165, 250, 0.32), transparent 70%);
-}
-
-.blob-b {
-  width: 300px;
-  height: 300px;
-  right: 22%;
-  bottom: -140px;
-  background: radial-gradient(circle, rgba(37, 99, 235, 0.32), transparent 70%);
-}
-
 .hero-inner {
   position: relative;
   z-index: 2;
@@ -212,10 +201,7 @@ function submitSearch() {
 .hero-title em {
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(100deg, #93c5fd, #2563eb);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  font-family: var(--font-display);
 }
 
 .hero-sub {

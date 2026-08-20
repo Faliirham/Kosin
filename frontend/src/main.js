@@ -1,12 +1,14 @@
 import { createApp } from 'vue'
 import './styles/tokens.css'
 import './styles/base.css'
+import './styles/effects.css'
 import './styles/header.css'
 import './styles/toast.css'
 import './styles/transitions.css'
 import './styles/sections.css'
 import App from './App.vue'
 import { initTheme } from './services/theme.js'
+import { magnetic } from './directives/magnetic.js'
 
 initTheme()
 
@@ -33,5 +35,7 @@ app.directive('reveal', {
     revealObserver.unobserve(el)
   },
 })
+
+app.directive('magnetic', magnetic)
 
 app.mount('#app')

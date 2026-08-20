@@ -1,0 +1,112 @@
+/* ── React Bits-style effects (ported to vanilla CSS) ── */
+
+/* Aurora background (reactbits.dev — Aurora) */
+.aurora {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.55;
+  will-change: transform;
+  animation: aurora-drift 18s ease-in-out infinite alternate;
+}
+
+.aurora-blob:nth-child(2) {
+  animation-delay: -6s;
+}
+
+.aurora-blob:nth-child(3) {
+  animation-delay: -12s;
+}
+
+@keyframes aurora-drift {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate(6%, -9%) scale(1.18) rotate(9deg); }
+  66% { transform: translate(-5%, 7%) scale(0.92) rotate(-7deg); }
+  100% { transform: translate(3%, -3%) scale(1.1) rotate(5deg); }
+}
+
+/* Spotlight card (reactbits.dev — SpotlightCard) */
+.spotlight {
+  position: relative;
+}
+
+.spotlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    360px circle at var(--mx, 50%) var(--my, 50%),
+    var(--accent-soft),
+    transparent 65%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.spotlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: radial-gradient(
+    300px circle at var(--mx, 50%) var(--my, 50%),
+    var(--accent-border),
+    transparent 70%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.spotlight:hover::before,
+.spotlight:hover::after {
+  opacity: 1;
+}
+
+/* Shine text (reactbits.dev — ShinyText) */
+.shine {
+  background: linear-gradient(
+    110deg,
+    #93c5fd 25%,
+    #ffffff 42%,
+    #3b82f6 55%,
+    #93c5fd 75%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shine-sweep 7s linear infinite;
+}
+
+@keyframes shine-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob,
+  .shine {
+    animation: none;
+  }
+
+  .spotlight::before,
+  .spotlight::after {
+    opacity: 0 !important;
+  }
+}
