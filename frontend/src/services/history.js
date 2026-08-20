@@ -27,15 +27,17 @@ function persist() {
 function sameSearch(a, b) {
   return (
     String(a.city || '').toLowerCase() === String(b.city || '').toLowerCase() &&
-    String(a.district || '').toLowerCase() === String(b.district || '').toLowerCase()
+    String(a.district || '').toLowerCase() === String(b.district || '').toLowerCase() &&
+    String(a.kelurahan || '').toLowerCase() === String(b.kelurahan || '').toLowerCase()
   )
 }
 
-export function addRecentSearch({ city, district, keyword }) {
+export function addRecentSearch({ city, district, kelurahan, keyword }) {
   if (!city || !String(city).trim()) return
   const entry = {
     city: String(city).trim(),
     district: district ? String(district).trim() : '',
+    kelurahan: kelurahan ? String(kelurahan).trim() : '',
     keyword: keyword && String(keyword).trim() ? String(keyword).trim() : 'kos kosan',
   }
   recent.items = recent.items.filter(r => !sameSearch(r, entry))
@@ -44,8 +46,8 @@ export function addRecentSearch({ city, district, keyword }) {
   persist()
 }
 
-export function removeRecentSearch({ city, district }) {
-  recent.items = recent.items.filter(r => !sameSearch(r, { city, district }))
+export function removeRecentSearch({ city, district, kelurahan }) {
+  recent.items = recent.items.filter(r => !sameSearch(r, { city, district, kelurahan }))
   persist()
 }
 

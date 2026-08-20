@@ -1,47 +1,72 @@
 <template>
   <div class="filter-bar">
-    <div class="scrape-section">
-      <div class="scrape-label">
-        <AppIcon name="compass" :size="16" />
-        <span>Cari kos baru</span>
-      </div>
-      <form class="scrape-row" @submit.prevent="emitScrape">
-        <div class="field field-grow">
-          <AppIcon name="map-pin" class="field-icon" :size="17" />
-          <input
-            v-model="city"
-            class="input"
-            placeholder="Kota — Bandung, Jakarta…"
-            aria-label="Nama kota"
-          />
+    <section class="scrape-section" aria-label="Cari kos baru">
+      <header class="section-head">
+        <span class="section-label">
+          <AppIcon name="compass" :size="16" />
+          Cari kos baru
+        </span>
+      </header>
+
+      <form class="scrape-form" @submit.prevent="emitScrape">
+        <div class="form-group">
+          <span class="group-label">Lokasi</span>
+          <div class="group-fields group-location">
+            <div class="field field-grow">
+              <AppIcon name="map-pin" class="field-icon" :size="17" />
+              <input
+                v-model="city"
+                class="input"
+                placeholder="Kota — Bandung, Jakarta…"
+                aria-label="Nama kota"
+                required
+              />
+            </div>
+            <div class="field field-district">
+              <AppIcon name="buildings" class="field-icon" :size="17" />
+              <input
+                v-model="scrapeDistrict"
+                class="input"
+                placeholder="Kecamatan (opsional)"
+                aria-label="Kecamatan"
+              />
+            </div>
+            <div class="field field-kelurahan">
+              <AppIcon name="map" class="field-icon" :size="17" />
+              <input
+                v-model="scrapeKelurahan"
+                class="input"
+                placeholder="Kelurahan (opsional)"
+                aria-label="Kelurahan"
+              />
+            </div>
+          </div>
         </div>
-        <div class="field field-keyword">
-          <AppIcon name="search" class="field-icon" :size="17" />
-          <input
-            v-model="keyword"
-            class="input"
-            placeholder="Keyword — kos kosan murah"
-            aria-label="Keyword pencarian"
-          />
+
+        <div class="form-group">
+          <span class="group-label">Kata kunci</span>
+          <div class="group-fields group-keyword">
+            <div class="field field-keyword">
+              <AppIcon name="search" class="field-icon" :size="17" />
+              <input
+                v-model="keyword"
+                class="input"
+                placeholder="Kos kosan, kos putri, indekos…"
+                aria-label="Keyword pencarian"
+              />
+            </div>
+            <button class="btn btn-primary" type="submit" :disabled="loading || scraping || !city">
+              <span v-if="loading || scraping" class="spinner"></span>
+              <AppIcon v-else name="search" :size="17" />
+              <span>{{ loading || scraping ? 'Mencari…' : 'Cari' }}</span>
+            </button>
+          </div>
         </div>
-        <div class="field field-district">
-          <AppIcon name="buildings" class="field-icon" :size="17" />
-          <input
-            v-model="scrapeDistrict"
-            class="input"
-            placeholder="Kecamatan (opsional)"
-            aria-label="Kecamatan atau kelurahan"
-          />
-        </div>
-        <button class="btn btn-primary" type="submit" :disabled="loading || scraping || !city">
-          <span v-if="loading || scraping" class="spinner"></span>
-          <AppIcon v-else name="search" :size="17" />
-          <span>{{ loading || scraping ? 'Mencari…' : 'Cari' }}</span>
-        </button>
       </form>
+
       <p v-if="(loading || scraping) && city" class="scrape-status">
         <AppIcon name="compass" :size="13" />
-        Mencari kos di {{ city }}{{ scrapeDistrict ? `, ${scrapeDistrict}` : '' }} — data ditarik langsung dari Google Maps, ini butuh beberapa saat.
+        Mencari kos di {{ locationLabel }} — data ditarik langsung dari Google Maps, ini butuh beberapa saat.
       </p>
 
       <div v-if="recentList.length" class="recent-row">
@@ -51,33 +76,35 @@
         </span>
         <button
           v-for="(r, i) in recentList"
-          :key="`${r.city}-${r.district}-${i}`"
+          :key="`${r.city}-${r.district}-${r.kelurahan}-${i}`"
           class="recent-chip"
-          :title="`Cari lagi ${r.city}${r.district ? `, ${r.district}` : ''}`"
+          :title="`Cari lagi ${recentLabel(r)}`"
           @click="applyRecent(r)"
         >
-          {{ r.city }}{{ r.district ? ` · ${shortDistrict(r.district)}` : '' }}
+          {{ recentLabel(r) }}
         </button>
         <button class="recent-clear" title="Hapus semua riwayat pencarian" aria-label="Hapus riwayat pencarian" @click="clearAllRecent">
           <AppIcon name="close" :size="12" />
         </button>
       </div>
-    </div>
+    </section>
 
     <div class="divider"></div>
 
-    <div class="filter-section">
-      <div class="filter-label">
-        <AppIcon name="filter" :size="15" />
-        <span>Filter &amp; urutkan</span>
-      </div>
+    <section class="filter-section" aria-label="Filter dan urutkan">
+      <header class="section-head">
+        <span class="section-label">
+          <AppIcon name="filter" :size="15" />
+          Filter &amp; urutkan
+        </span>
+      </header>
       <div class="filter-row">
         <div class="field field-search">
           <AppIcon name="search" class="field-icon" :size="16" />
           <input
             v-model="search"
             class="input"
-            placeholder="Cari nama, kota, atau kecamatan…"
+            placeholder="Cari nama, alamat, atau area…"
             aria-label="Cari kos"
             @input="emitFilter"
           />
@@ -97,6 +124,15 @@
             class="input"
             placeholder="Kecamatan"
             aria-label="Filter kecamatan"
+            @input="emitFilter"
+          />
+        </div>
+        <div class="field">
+          <input
+            v-model="filterKelurahan"
+            class="input"
+            placeholder="Kelurahan"
+            aria-label="Filter kelurahan"
             @input="emitFilter"
           />
         </div>
@@ -133,7 +169,7 @@
           Reset
         </button>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
@@ -149,9 +185,11 @@ const emit = defineEmits(['scrape', 'filter'])
 const city = ref('')
 const keyword = ref('kos kosan')
 const scrapeDistrict = ref('')
+const scrapeKelurahan = ref('')
 const search = ref('')
 const filterCity = ref('')
 const filterDistrict = ref('')
+const filterKelurahan = ref('')
 const minRating = ref('')
 const sort = ref('created_at')
 const favoritesOnly = ref(false)
@@ -163,6 +201,7 @@ watch(() => props.filters, (f) => {
   search.value = f.search || ''
   filterCity.value = f.city || ''
   filterDistrict.value = f.district || ''
+  filterKelurahan.value = f.kelurahan || ''
   minRating.value = f.min_rating != null ? String(f.min_rating) : ''
   sort.value = f.sort || 'created_at'
   favoritesOnly.value = !!f.favorites_only
@@ -172,13 +211,26 @@ onMounted(() => {
   if (props.initialCity) city.value = props.initialCity
 })
 
-const hasActiveFilter = computed(() => !!(search.value || filterCity.value || filterDistrict.value || minRating.value || sort.value !== 'created_at' || favoritesOnly.value))
+const locationLabel = computed(() => {
+  return [city.value, scrapeDistrict.value, scrapeKelurahan.value].filter(Boolean).join(', ')
+})
+
+const hasActiveFilter = computed(() => !!(
+  search.value ||
+  filterCity.value ||
+  filterDistrict.value ||
+  filterKelurahan.value ||
+  minRating.value ||
+  sort.value !== 'created_at' ||
+  favoritesOnly.value
+))
 
 function emitScrape() {
   emit('scrape', {
     city: city.value,
     keyword: keyword.value,
     district: scrapeDistrict.value || undefined,
+    kelurahan: scrapeKelurahan.value || undefined,
   })
 }
 
@@ -187,6 +239,7 @@ function buildFilterPayload() {
     search: search.value || undefined,
     city: filterCity.value || undefined,
     district: filterDistrict.value || undefined,
+    kelurahan: filterKelurahan.value || undefined,
     min_rating: minRating.value ? Number(minRating.value) : undefined,
     sort: sort.value,
     favorites_only: favoritesOnly.value || undefined,
@@ -200,13 +253,20 @@ function toggleFavorites() {
 
 const recentList = computed(() => recentSearches())
 
-function shortDistrict(d) {
-  return (d || '').replace(/^Kec\.\s*/i, '')
+function shortArea(v) {
+  return (v || '').replace(/^(Kec\.|Kel\.|Kecamatan|Kelurahan)\s*/i, '')
+}
+
+function recentLabel(r) {
+  return [r.city, r.district ? shortArea(r.district) : null, r.kelurahan ? shortArea(r.kelurahan) : null]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 function applyRecent(r) {
   city.value = r.city
   scrapeDistrict.value = r.district || ''
+  scrapeKelurahan.value = r.kelurahan || ''
   keyword.value = r.keyword || 'kos kosan'
   emitScrape()
 }
@@ -231,6 +291,7 @@ function resetFilters() {
   search.value = ''
   filterCity.value = ''
   filterDistrict.value = ''
+  filterKelurahan.value = ''
   minRating.value = ''
   sort.value = 'created_at'
   favoritesOnly.value = false
@@ -247,36 +308,68 @@ function resetFilters() {
   padding: 22px 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
-.scrape-label,
-.filter-label {
+.section-head {
   display: flex;
+  align-items: center;
+}
+
+.section-label {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
-.scrape-label .icon,
-.filter-label .icon {
+.section-label .icon {
   color: var(--accent);
 }
 
-.scrape-row {
+.scrape-form {
   display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.group-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.group-fields {
+  display: grid;
   gap: 10px;
-  margin-top: 10px;
+}
+
+.group-location {
+  grid-template-columns: 2.1fr 1.3fr 1.3fr;
+}
+
+.group-keyword {
+  grid-template-columns: 1fr auto;
 }
 
 .filter-row {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .divider {
@@ -329,13 +422,14 @@ function resetFilters() {
   border-radius: 999px;
   padding: 6px 14px;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s;
 }
 
 .recent-chip:hover {
   background: var(--accent-soft);
   border-color: var(--accent-border);
   color: var(--accent-strong);
+  transform: translateY(-1px);
 }
 
 .recent-clear {
@@ -370,9 +464,11 @@ function resetFilters() {
   pointer-events: none;
 }
 
-.field-grow { flex: 2.2; min-width: 180px; }
-.field-keyword { flex: 1.6; min-width: 160px; }
-.field-district { flex: 1.2; min-width: 160px; }
+.field-grow { flex: 1; }
+.field-district { flex: 1; }
+.field-kelurahan { flex: 1; }
+
+.field-keyword { flex: 1; }
 
 .filter-row .field {
   flex: 1 1 150px;
@@ -394,7 +490,7 @@ function resetFilters() {
   font-family: var(--font-body);
   background: var(--surface-2);
   color: var(--ink);
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s, transform 0.15s;
   outline: none;
 }
 
@@ -441,7 +537,7 @@ function resetFilters() {
   font-size: 14.5px;
   font-weight: 700;
   white-space: nowrap;
-  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s, color 0.2s;
 }
 
 .btn-primary {
@@ -525,9 +621,31 @@ function resetFilters() {
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 760px) {
-  .scrape-row {
-    flex-direction: column;
+@media (max-width: 900px) {
+  .group-location {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .field-grow {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .filter-bar {
+    padding: 18px 16px;
+  }
+
+  .group-location {
+    grid-template-columns: 1fr;
+  }
+
+  .field-grow {
+    grid-column: auto;
+  }
+
+  .group-keyword {
+    grid-template-columns: 1fr;
   }
 
   .btn-primary {

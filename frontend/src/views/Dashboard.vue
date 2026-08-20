@@ -246,30 +246,31 @@ async function loadKos(params = {}, reset = true) {
   }
 }
 
-async function handleScrape({ city, keyword, district }) {
+async function handleScrape({ city, keyword, district, kelurahan }) {
   const myScrape = ++scrapeSeq
   scraping.value = true
   scrapingCity.value = city
   scrapeAreas.value = []
   error.value = ''
 
-  const params = { city, district: district || undefined }
+  const params = { city, district: district || undefined, kelurahan: kelurahan || undefined }
 
   try {
     const [scrapeRes] = await Promise.allSettled([
-      triggerScrape(city, keyword, district),
+      triggerScrape(city, keyword, district, kelurahan),
       loadKos(params, true),
     ])
 
     if (myScrape !== scrapeSeq) return
 
     if (scrapeRes.status === 'fulfilled') {
-      addRecentSearch({ city, district, keyword })
+      addRecentSearch({ city, district, kelurahan, keyword })
       scrapeAreas.value = scrapeRes.value?.areas || []
       filters.value = {
         ...filters.value,
         city,
         district: params.district,
+        kelurahan: params.kelurahan,
         search: undefined,
       }
       await loadKos(filters.value, true)

@@ -30,8 +30,12 @@ export async function deleteKos(id) {
   return res.data
 }
 
-export async function triggerScrape(city, keyword = 'kos kosan', district) {
-  const res = await api.post('/scrape', { city, keyword, district }, { timeout: 120_000 })
+export async function triggerScrape(city, keyword = 'kos kosan', district, kelurahan) {
+  const res = await api.post(
+    '/scrape',
+    { city, keyword, district, kelurahan },
+    { timeout: 120_000 }
+  )
   return res.data
 }
 
