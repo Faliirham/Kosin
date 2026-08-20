@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import AppIcon from '../../src/components/AppIcon.vue'
+import AppIcon from '../../components/AppIcon.vue'
 
 describe('AppIcon.vue', () => {
   it('renders an svg sized by the size prop', () => {

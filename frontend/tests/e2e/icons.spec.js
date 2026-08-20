@@ -30,7 +30,7 @@ test.describe('icon rendering & select layout across themes', () => {
       test.setTimeout(30_000)
       await page.setViewportSize({ width: 1280, height: 900 })
       await stubApi(page)
-      await page.goto('/#/')
+      await page.goto('/')
       await page.addStyleTag({ content: 'img { display: none !important; }' })
       if (theme === 'dark') await page.click('.theme-toggle')
       await page.waitForTimeout(300)
@@ -38,7 +38,7 @@ test.describe('icon rendering & select layout across themes', () => {
       await assertIconsPaint(page)
       await expect(page.locator('.icon')).toHaveCount(26)
 
-      await page.goto('/#/dashboard?city=Bandung')
+      await page.goto('/dashboard?city=Bandung')
       await page.waitForTimeout(600)
       await assertIconsPaint(page)
 
@@ -49,7 +49,7 @@ test.describe('icon rendering & select layout across themes', () => {
         expect(w, 'select tidak boleh melebar penuh satu baris').toBeLessThan(400)
       }
 
-      await page.goto('/#/kos/1')
+      await page.goto('/kos/1')
       await page.waitForTimeout(600)
       await assertIconsPaint(page)
     })

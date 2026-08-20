@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import axios from 'axios'
-import { isHttpUrl, fetchKos, fetchKosDetail, deleteKos, triggerScrape, healthCheck, fetchStats } from '../../src/services/api'
+import { isHttpUrl, fetchKos, fetchKosDetail, deleteKos, triggerScrape, healthCheck, fetchStats } from '../../utils/api'
 
 vi.mock('axios', () => {
   const api = { get: vi.fn(), post: vi.fn(), delete: vi.fn() }

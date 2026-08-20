@@ -6,7 +6,7 @@
 
 Sebuah full-stack web application yang mencari kos-kosan via **Google Places API**, menyimpannya ke PostgreSQL, dan menampilkannya dalam dashboard interaktif dengan peta **Google Maps JavaScript API**.
 
-![Stack](https://img.shields.io/badge/Frontend-Vue%203%20%2F%20Vite-42b883)
+![Stack](https://img.shields.io/badge/Frontend-Vue%203%20%2F%20Nuxt%203%20(SSG)-42b883)
 ![Stack](https://img.shields.io/badge/Backend-FastAPI-009688)
 ![Stack](https://img.shields.io/badge/Database-PostgreSQL-336791)
 ![Stack](https://img.shields.io/badge/Data-Google%20Places%20%2F%20OSM-4285f4)
@@ -73,8 +73,8 @@ Sebuah full-stack web application yang mencari kos-kosan via **Google Places API
 │  │  - Filter      │  ◄───────  │  │  - Geocode Fallback 🥈 │  │
 │  │  - Detail      │  │         │  │  - OSM / Nominatim     │  │
 │  └────────────────┘  │         │  └──────────┬────────────┘  │
-│        Vite:5173     │         │             │               │
-│                      │         │  ┌──────────▼────────────┐  │
+│        Nuxt:3000      │         │             │               │
+│        (SSG statis)   │         │  ┌──────────▼────────────┐  │
 │                      │         │  │   PostgreSQL 17       │  │
 │                      │         │  │   (SQLAlchemy/async)  │  │
 │                      │         │  └───────────────────────┘  │
@@ -125,13 +125,44 @@ kosin/
 │   ├── .env                         # Environment variables (jangan di-commit!)
 │   └── .env.example
 │
-├── frontend/                        # Vue 3 frontend
-│   ├── index.html
+├── frontend/                        # Vue 3 + Nuxt 3 frontend (SSG)
 │   ├── package.json
-│   ├── vite.config.js               # Konfigurasi Vite + proxy /api
+│   ├── nuxt.config.ts               # Konfigurasi Nuxt (css, head, devProxy /api, SSG)
+│   ├── app.vue                      # Root Nuxt (navigasi global, toast, back-to-top)
+│   ├── layouts/
+│   │   └── default.vue              # Layout global (SiteHeader + main + SiteFooter)
+│   ├── pages/                       # Routing Nuxt (file-based, tanpa hash)
+│   │   ├── index.vue                # Landing page
+│   │   ├── dashboard.vue            # Halaman utama (list + map)
+│   │   ├── kos/[id].vue             # Detail lengkap kos-kosan
+│   │   └── 404.vue                  # Halaman tidak ditemukan
+│   ├── components/
+│   │   ├── AppIcon.vue              # SVG icon set
+│   │   ├── SiteHeader.vue           # Header global (nav + tema)
+│   │   ├── SiteFooter.vue           # Footer global (atribusi Google/OSM + legal links)
+│   │   ├── FilterBar.vue            # Form scrape + filter/sort
+│   │   ├── KosCard.vue              # Kartu ringkasan kos
+│   │   ├── MapView.vue              # Peta Google Maps dengan markers
+│   │   ├── StateCard.vue            # State kosong/error/loading
+│   │   ├── SkeletonGrid.vue         # Skeleton loader daftar kos
+│   │   ├── effects/                 # Efek motion (React Bits-style, vanilla)
+│   │   │   ├── TiltCard.vue         #   Tilt 3D + glare (kartu kos & visual hero)
+│   │   │   ├── SplitText.vue        #   Reveal kata berurutan (judul section)
+│   │   │   ├── TextScramble.vue     #   Efek scramble (badge hero)
+│   │   │   ├── ScrollProgress.vue   #   Progress bar scroll global
+│   │   │   └── ParticlesField.vue   #   Partikel canvas (latar hero)
+│   │   ├── detail/                  # GallerySection, InfoSection (halaman detail)
+│   │   └── landing/                 # Hero, StatsBand, Features, HowItWorks, Cities, CTA
+│   ├── composables/
+│   │   └── useApp.js                # Navigasi, activeView, toast, back-to-top, shortcut
+│   ├── plugins/
+│   │   ├── directives.js            # v-reveal & v-magnetic (universal, SSR-safe)
+│   │   └── theme.client.js          # Inisialisasi tema di client (anti-FOUC)
+│   ├── utils/                       # api, theme, favorites, history, contact, csv
+│   ├── assets/css/                  # tokens, base, main, effects
 │   ├── vitest.config.js             # Konfigurasi unit test (Vitest + jsdom)
-│   ├── playwright.config.js         # Konfigurasi e2e (Playwright, webServer vite)
-│   ├── tests/                       # Semua file test — terpisah dari kode aplikasi
+│   ├── playwright.config.js         # Konfigurasi e2e (Playwright, webServer nuxt dev)
+│   └── tests/                       # Semua file test — terpisah dari kode aplikasi
 │   │   ├── unit/                    # Unit test (Vitest)
 │   │   │   ├── api.test.js          # Client API (mock axios)
 │   │   │   ├── theme.test.js        # Dark/light mode
@@ -148,30 +179,6 @@ kosin/
 │   │       ├── theme.spec.js        # Toggle dark mode, persist, reload
 │   │       ├── icons.spec.js        # Render ikon + lebar select di light & dark
 │   │       └── chevron.spec.js      # Chevron select ikut tema
-│   └── src/
-│       ├── main.js                  # Vue app bootstrap
-│       ├── App.vue                  # Root component + routing sederhana
-│       ├── services/
-│       │   ├── api.js               # Axios client ke backend
-│       │   ├── theme.js             # Dark/light mode (sistem + manual, persist localStorage)
-│       │   ├── favorites.js         # Store favorit kos (reactive, localStorage)
-│       │   ├── history.js           # Store riwayat pencarian (reactive, localStorage)
-│       │   ├── contact.js           # Helper phone→wa.me & URL petunjuk arah
-│       │   └── csv.js               # Builder CSV + download file
-│       ├── components/
-│       │   ├── AppIcon.vue          # SVG icon set
-│       │   ├── SiteHeader.vue       # Header global (nav + tema)
-│       │   ├── SiteFooter.vue       # Footer global (atribusi Google/OSM + legal links)
-│       │   ├── FilterBar.vue        # Form scrape + filter/sort
-│       │   ├── KosCard.vue          # Kartu ringkasan kos
-│       │   ├── MapView.vue          # Peta Google Maps dengan markers
-│       │   ├── StateCard.vue        # State kosong/error/loading
-│       │   ├── SkeletonGrid.vue     # Skeleton loader daftar kos
-│       │   ├── detail/              # GallerySection, InfoSection (halaman detail)
-│       │   └── landing/             # Hero, StatsBand, Features, HowItWorks, Cities, CTA
-│       └── views/
-│           ├── Dashboard.vue        # Halaman utama (list + map)
-│           └── DetailKos.vue        # Detail lengkap kos-kosan
 │
 └── README.md
 ```
@@ -195,7 +202,7 @@ kosin/
 | Teknologi | Versi | Fungsi |
 |-----------|-------|--------|
 | [Vue 3](https://vuejs.org/) | 3.5 | JavaScript framework |
-| [Vite](https://vite.dev/) | 6.0 | Build tool & dev server |
+| [Nuxt 3](https://nuxt.com/) | 3.21 | Meta-framework — routing file-based, SSR & **SSG statis** (`nuxt generate`) |
 | [Axios](https://axios-http.com/) | 1.7 | HTTP client |
 | [Geist](https://vercel.com/font) | — | Font display & body (via Google Fonts) |
 | [Google Maps JS API](https://developers.google.com/maps/documentation/javascript) | — | Map library (via `@googlemaps/js-api-loader`) |
@@ -295,7 +302,7 @@ cp .env.example .env
 |----------|-----------|--------|
 | `DATABASE_URL` | Koneksi PostgreSQL | `postgresql+asyncpg://postgres:admin@localhost:5432/kos_finder` |
 | `GOOGLE_MAPS_API_KEY` | API key Google Places & Geocoding (server-side only!) | `AIza...` |
-| `CORS_ORIGINS` | Origin frontend yang diizinkan CORS (pisah koma) | `http://localhost:5173,https://kosin.app` |
+| `CORS_ORIGINS` | Origin frontend yang diizinkan CORS (pisah koma) | `http://localhost:3000,https://kosin.app` |
 | `SCRAPE_GRID_SIZE` | Pecah kota menjadi **N×N sel area** dan cari per sel agar area pinggiran ikut terjangkau (default `2` → 4 sel; opsional `3` → 9 sel). Mode `lat/lng` manual tidak terpengaruh. | `2` |
 | `SCRAPE_KEYWORDS` | Varian keyword yang dijalankan **per sel** (pisah koma). Hasil antar keyword di-dedup per `place_id`. Semakin banyak keyword semakin luas cakupan, semakin besar pemakaian API. | `kos,kost,kosan,indekos,rumah kos` |
 | `SCRAPE_MAX_PAGES` | Maks halaman pagination per query (20 hasil/halaman, maks `5`) | `3` |
@@ -341,13 +348,23 @@ cd frontend
 npm run dev
 ```
 
-Frontend berjalan di **http://localhost:5173**
+Frontend berjalan di **http://localhost:3000**
 
-Vite meng-proxy request `/api/*` ke backend `localhost:8000`, jadi tidak perlu konfigurasi tambahan.
+Nuxt meng-proxy request `/api/*` ke backend `localhost:8000` (`devProxy` di `nuxt.config.ts`), jadi tidak perlu konfigurasi tambahan.
+
+### Build Statis (SSG)
+
+```bash
+cd frontend
+npm run generate      # hasil: .output/public (8 rute ter-prerender, termasuk /404.html)
+npm run preview       # pratinjau hasil build secara lokal
+```
+
+Deploy = serve seluruh isi `.output/public/` dengan nginx (atau hosting statis apa pun), lalu proxy `/api/*` ke backend `:8000`. Rute `/dashboard` dan `/kos/:id` adalah file HTML statis yang ber-`fetch` API dari client — tidak perlu server Node di produksi.
 
 ### Cara Pakai
 
-1. Buka `http://localhost:5173`
+1. Buka `http://localhost:3000`
 2. Masukkan **kota** (contoh: Bandung, Jakarta, Surabaya) — opsional **kecamatan/kelurahan**
 3. Klik tombol **Scrape**
 4. Hasil kos-kosan muncul sebagai kartu + marker di peta
@@ -561,7 +578,7 @@ Komponen & service diuji dalam DOM tiruan (jsdom), tanpa browser dan tanpa backe
 
 ```bash
 cd frontend
-npm run test:unit      # 79 test (Vitest)
+npm run test:unit      # 81 test (Vitest)
 npm run test:unit:watch
 ```
 
@@ -571,7 +588,7 @@ Yang diuji: logika tema (preferensi sistem, persist `localStorage`, reaksi perub
 
 ### 3. Frontend — End-to-End (Playwright)
 
-Menjalankan aplikasi nyata di browser Chromium (dev server vite otomatis dinyalakan oleh `webServer` di `playwright.config.js`). **Semua API di-stub** (`page.route`) — Google Maps di-abort, `GET/POST /api/*` di-fake — sehingga e2e berjalan **tanpa backend, PostgreSQL, maupun API key**:
+Menjalankan aplikasi nyata di browser Chromium (dev server Nuxt otomatis dinyalakan oleh `webServer` di `playwright.config.js`, port 3000). **Semua API di-stub** (`page.route`) — Google Maps di-abort, `GET/POST /api/*` di-fake — sehingga e2e berjalan **tanpa backend, PostgreSQL, maupun API key**:
 
 ```bash
 cd frontend
@@ -600,7 +617,7 @@ Hasil gagal: trace & screenshot otomatis disimpan di `frontend/test-results/` (d
 | Job | Perintah | Artifact on failure |
 |-----|----------|---------------------|
 | `backend` | `python -m pytest backend/tests` (Python 3.11, pip cache) | — |
-| `frontend-unit` | `npm run test:unit` + `npm run build` (Node 20, npm cache) | — |
+| `frontend-unit` | `npm run test:unit` + `npm run generate` (Node 20, npm cache) | — |
 | `frontend-e2e` | `npx playwright install --with-deps chromium` + `npm run test:e2e` | `frontend/test-results` |
 
 Karena e2e memakai stub API, workflow **tidak memerlukan** `GOOGLE_MAPS_API_KEY` maupun PostgreSQL.
@@ -661,6 +678,8 @@ Karena e2e memakai stub API, workflow **tidak memerlukan** `GOOGLE_MAPS_API_KEY`
 - [x] Statistik nyata di landing page (`GET /api/stats` — total, kota, rata-rata rating)
 - [x] Design refresh: font Geist, scroll-reveal, spotlight hover, stats band layered
 - [x] Konsistensi mobile: input 16px (anti zoom iOS), peta/stats di layar sempit
+- [x] Migrasi SPA → **Nuxt 3 SSG**: routing file-based tanpa hash (`/dashboard`, `/kos/:id`), pre-render statis, dev proxy `/api`
+- [x] Motion React Bits-style (vanilla, tanpa dependency): TiltCard 3D, SplitText, TextScramble, ScrollProgress, ParticlesField — hormat `prefers-reduced-motion`
 
 ### 🔜 Berikutnya
 
@@ -688,6 +707,6 @@ Karena e2e memakai stub API, workflow **tidak memerlukan** `GOOGLE_MAPS_API_KEY`
 
 <div align="center">
 
-Dibuat dengan ❤️ menggunakan **FastAPI** & **Vue 3**
+Dibuat dengan ❤️ menggunakan **FastAPI** & **Vue 3 + Nuxt 3**
 
 </div>

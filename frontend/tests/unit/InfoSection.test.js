@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import InfoSection from '../../src/components/detail/InfoSection.vue'
-import { clearFavorites } from '../../src/services/favorites'
+import InfoSection from '../../components/detail/InfoSection.vue'
+import { clearFavorites } from '../../utils/favorites'
 
 const KOS = {
   id: 'kos-1',

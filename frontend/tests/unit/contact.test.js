@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { phoneToWa, directionsUrl, currentShareUrl } from '../../src/services/contact'
+import { phoneToWa, directionsUrl, currentShareUrl } from '../../utils/contact'
 
 describe('contact.js', () => {
   describe('phoneToWa', () => {

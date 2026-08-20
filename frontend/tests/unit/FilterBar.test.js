@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import FilterBar from '../../src/components/FilterBar.vue'
-import { addRecentSearch, clearRecentSearches } from '../../src/services/history'
+import FilterBar from '../../components/FilterBar.vue'
+import { addRecentSearch, clearRecentSearches } from '../../utils/history'
 
 describe('FilterBar.vue', () => {
   beforeEach(() => {

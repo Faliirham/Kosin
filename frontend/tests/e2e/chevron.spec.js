@@ -4,7 +4,8 @@ test('select chevron & focus follow the active theme', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.route('**://maps.googleapis.com/**', r => r.abort())
   await page.route('**/api/kos?**', r => r.fulfill({ json: { data: [], total: 0 } }))
-  await page.goto('/#/dashboard')
+  await page.goto('/dashboard')
+  await page.waitForSelector('html[data-theme]')
 
   const chevron = async () => page.evaluate(() => {
     const s = document.querySelector('.select')

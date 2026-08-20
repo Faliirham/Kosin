@@ -7,7 +7,7 @@ import {
   initTheme,
   setTheme,
   toggleTheme,
-} from '../../src/services/theme'
+} from '../../utils/theme'
 
 describe('theme.js', () => {
   let listeners
