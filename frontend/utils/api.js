@@ -34,7 +34,7 @@ export async function triggerScrape(city, keyword = 'kos kosan', district, kelur
   const res = await api.post(
     '/scrape',
     { city, keyword, district, kelurahan },
-    { timeout: 120_000 }
+    { timeout: 30_000 }
   )
   return res.data
 }

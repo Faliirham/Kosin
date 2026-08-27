@@ -23,6 +23,17 @@ async def run_migrations(conn) -> None:
         await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS source VARCHAR(20)"))
         await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS district VARCHAR(100)"))
         await conn.execute(text("ALTER TABLE kos ADD COLUMN IF NOT EXISTS kelurahan VARCHAR(100)"))
+        # Trigram + GIN untuk pencarian teks (city/district/kelurahan) yang fuzzy
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        await conn.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_kos_city_trgm ON kos USING gin (city gin_trgm_ops)")
+        )
+        await conn.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_kos_district_trgm ON kos USING gin (district gin_trgm_ops)")
+        )
+        await conn.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_kos_kelurahan_trgm ON kos USING gin (kelurahan gin_trgm_ops)")
+        )
     # Indeks pendukung dedup & pagination (PG/SQLite memperbolehkan banyak NULL pada UNIQUE)
     await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_kos_place_id ON kos (place_id)"))
     await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_kos_created_at ON kos (created_at)"))

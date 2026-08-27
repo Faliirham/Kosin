@@ -248,6 +248,17 @@ async function loadKos(params = {}, reset = true) {
   }
 }
 
+function computeAreas(list) {
+  const counts = {}
+  for (const k of list) {
+    if (k.district) counts[k.district] = (counts[k.district] || 0) + 1
+  }
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([district, count]) => ({ district, count }))
+}
+
 async function handleScrape({ city, keyword, district, kelurahan }) {
   const myScrape = ++scrapeSeq
   scraping.value = true
@@ -258,36 +269,39 @@ async function handleScrape({ city, keyword, district, kelurahan }) {
   const params = { city, district: district || undefined, kelurahan: kelurahan || undefined }
 
   try {
-    const [scrapeRes] = await Promise.allSettled([
-      triggerScrape(city, keyword, district, kelurahan),
-      loadKos(params, true),
-    ])
-
+    await triggerScrape(city, keyword, district, kelurahan)
+  } catch (e) {
     if (myScrape !== scrapeSeq) return
-
-    if (scrapeRes.status === 'fulfilled') {
-      addRecentSearch({ city, district, kelurahan, keyword })
-      scrapeAreas.value = scrapeRes.value?.areas || []
-      filters.value = {
-        ...filters.value,
-        city,
-        district: params.district,
-        kelurahan: params.kelurahan,
-        search: undefined,
-      }
-      await loadKos(filters.value, true)
-    } else {
-      const e = scrapeRes.reason
-      const msg = 'Gagal scrape: ' + (e.response?.data?.detail || e.message)
-      if (kosList.value.length) {
-        toast(msg, 'error')
-      } else {
-        error.value = msg
-      }
-    }
-  } finally {
-    if (myScrape === scrapeSeq) scraping.value = false
+    const msg = 'Gagal memulai scrape: ' + (e.response?.data?.detail || e.message)
+    if (kosList.value.length) toast(msg, 'error')
+    else error.value = msg
+    scraping.value = false
+    return
   }
+
+  // Backend menjalankan scrape di latar belakang (respons cepat). Kita
+  // polling list sampai data muncul agar user tak menunggu proses menit-an.
+  const baseTotal = total.value
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+  for (let i = 0; i < 10; i++) {
+    if (myScrape !== scrapeSeq) return
+    await sleep(2500)
+    if (myScrape !== scrapeSeq) return
+    await loadKos(params, true)
+    if (total.value > baseTotal || (baseTotal === 0 && total.value > 0)) break
+  }
+  if (myScrape !== scrapeSeq) return
+
+  addRecentSearch({ city, district, kelurahan, keyword })
+  filters.value = {
+    ...filters.value,
+    city,
+    district: params.district,
+    kelurahan: params.kelurahan,
+    search: undefined,
+  }
+  scrapeAreas.value = computeAreas(kosList.value)
+  scraping.value = false
 }
 
 function handleFilter(params) {
