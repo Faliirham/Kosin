@@ -1,7 +1,12 @@
 import axios from 'axios'
 
+// Browser: relative "/api" is rewritten by the Nuxt dev proxy to the backend.
+// Server (SSR): a relative URL has no host, so build an absolute backend URL.
+const API_URL = process.env.API_URL || 'http://localhost:8000'
+const baseURL = import.meta.server ? `${API_URL}/api` : '/api'
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
   timeout: 60_000,
 })
 
