@@ -49,15 +49,15 @@ describe('api.js', () => {
     expect(api.delete).toHaveBeenCalledWith('/kos/abc')
   })
 
-  it('triggerScrape posts city, keyword, and district with long timeout', async () => {
-    api.post.mockResolvedValue({ data: { total_scraped: 3 } })
+  it('triggerScrape posts city, keyword, and district with a short timeout', async () => {
+    api.post.mockResolvedValue({ data: { status: 'accepted' } })
     const res = await triggerScrape('Bandung', 'kos murah', 'Coblong')
     expect(api.post).toHaveBeenCalledWith(
       '/scrape',
-      { city: 'Bandung', keyword: 'kos murah', district: 'Coblong' },
-      { timeout: 120_000 }
+      { city: 'Bandung', keyword: 'kos murah', district: 'Coblong', kelurahan: undefined },
+      { timeout: 30_000 }
     )
-    expect(res.total_scraped).toBe(3)
+    expect(res.status).toBe('accepted')
   })
 
   it('healthCheck hits /health', async () => {

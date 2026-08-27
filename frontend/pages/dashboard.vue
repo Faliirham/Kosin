@@ -68,7 +68,7 @@
       <div class="list-wrap">
         <div class="kos-list" :class="{ 'is-filtering': filtering || (scraping && kosList.length) }">
           <TiltCard
-            v-for="kos in displayKos"
+            v-for="(kos, i) in displayKos"
             :key="kos.id"
             :max="5"
             :scale="1.01"
@@ -77,7 +77,7 @@
             @mouseenter="activeId = kos.id; mapRef?.focusMarker?.(kos.id)"
             @mouseleave="activeId = null"
           >
-            <KosCard :kos="kos" :active="activeId === kos.id" @click="openDetail(kos.id)" />
+            <KosCard :kos="kos" :index="i" :active="activeId === kos.id" @click="openDetail(kos.id)" />
           </TiltCard>
           <button v-if="total > kosList.length" class="btn-load-more" @click="loadMore" :disabled="loadingMore">
             <span v-if="loadingMore" class="spinner-sm"></span>

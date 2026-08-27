@@ -2,6 +2,7 @@
   <article
     class="kos-card"
     :class="{ 'is-active': active }"
+    :style="{ '--card-index': index }"
     role="button"
     tabindex="0"
     @click="$emit('click')"
@@ -79,7 +80,7 @@ import AppIcon from './AppIcon.vue'
 import { isHttpUrl } from '../utils/api.js'
 import { isFavorite, toggleFavorite } from '../utils/favorites.js'
 
-const props = defineProps({ kos: Object, active: Boolean })
+const props = defineProps({ kos: Object, active: Boolean, index: { type: Number, default: 0 } })
 defineEmits(['click'])
 
 const photoFailed = ref(false)
@@ -117,6 +118,25 @@ const shortDistrict = computed(() => {
   transition: transform 0.22s, box-shadow 0.25s, border-color 0.25s;
   display: flex;
   flex-direction: column;
+  animation: cardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--card-index, 0) * 45ms);
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kos-card {
+    animation: none;
+  }
 }
 
 .kos-card::before {

@@ -37,6 +37,7 @@ const markerCount = ref(0)
 let googleMaps = null
 let map = null
 let markerById = new Map()
+let clusterMarkers = []
 let themeObserver = null
 
 const DEFAULT_CENTER = { lat: -6.9175, lng: 107.6191 }
@@ -54,6 +55,15 @@ const PIN_SVG =
       <path d="M18 1C9 1 2 8.2 2 17.2 2 29 18 45 18 45s16-16 16-27.8C34 8.2 27 1 18 1z" fill="#2563eb" stroke="#fff" stroke-width="2.4"/>
       <path d="M18 10l6.5 9.5H20V28h-4v-8.5h-4.5z" fill="#fff"/>
     </svg>`
+  )
+
+const CLUSTER_SVG =
+  'data:image/svg+xml;charset=utf-8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="46" height="46">
+       <circle cx="23" cy="23" r="20" fill="#1d4ed8" stroke="#ffffff" stroke-width="3"/>
+       <circle cx="23" cy="23" r="20" fill="rgba(37,99,235,0.25)"/>
+     </svg>`
   )
 
 async function initMap() {
@@ -77,6 +87,7 @@ async function initMap() {
       if (map) map.setOptions({ backgroundColor: mapBgColor() })
     })
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    map.addListener('zoom_changed', () => updateMarkers(false))
     updateMarkers()
   } catch (e) {
     console.error('Gagal memuat Google Maps:', e)
@@ -129,33 +140,91 @@ function popupHtml(m) {
     </style>`
 }
 
-function updateMarkers() {
+function buildClusters(valid) {
+  const proj = map.getProjection && map.getProjection()
+  if (!proj) return valid.map(m => [m])
+  const zoom = map.getZoom() || 11
+  const scale = 2 ** zoom
+  const pts = valid.map(m => {
+    const p = proj.fromLatLngToPoint(new googleMaps.maps.LatLng(m.latitude, m.longitude))
+    return { m, x: p.x * scale, y: p.y * scale }
+  })
+  const seen = new Set()
+  const clusters = []
+  const R = 46
+  for (let i = 0; i < pts.length; i++) {
+    if (seen.has(i)) continue
+    const group = [pts[i]]
+    seen.add(i)
+    for (let j = i + 1; j < pts.length; j++) {
+      if (seen.has(j)) continue
+      const dx = pts[i].x - pts[j].x
+      const dy = pts[i].y - pts[j].y
+      if (dx * dx + dy * dy <= R * R) {
+        group.push(pts[j])
+        seen.add(j)
+      }
+    }
+    clusters.push(group.map(g => g.m))
+  }
+  return clusters
+}
+
+function renderMarkers() {
   if (!map || !googleMaps) return
   markerById.forEach(entry => entry.marker.setMap(null))
   markerById.clear()
+  clusterMarkers.forEach(m => m.setMap(null))
+  clusterMarkers = []
 
   const valid = props.markers.filter(m => m.latitude && m.longitude)
   markerCount.value = valid.length
   if (valid.length === 0) return
 
-  valid.forEach(m => {
-    const marker = new googleMaps.maps.Marker({
-      position: { lat: m.latitude, lng: m.longitude },
-      map,
-      title: m.name,
-      icon: iconFor(m.id === props.highlightId),
-    })
-    const info = new googleMaps.maps.InfoWindow({ content: popupHtml(m) })
-    marker.addListener('click', () => {
-      emit('select', m.id)
-      info.open({ map, anchor: marker })
-    })
-    markerById.set(m.id, { marker, info })
+  buildClusters(valid).forEach(group => {
+    if (group.length === 1) {
+      const m = group[0]
+      const marker = new googleMaps.maps.Marker({
+        position: { lat: m.latitude, lng: m.longitude },
+        map,
+        title: m.name,
+        icon: iconFor(m.id === props.highlightId),
+      })
+      const info = new googleMaps.maps.InfoWindow({ content: popupHtml(m) })
+      marker.addListener('click', () => {
+        emit('select', m.id)
+        info.open({ map, anchor: marker })
+      })
+      markerById.set(m.id, { marker, info })
+    } else {
+      const lat = group.reduce((s, m) => s + m.latitude, 0) / group.length
+      const lng = group.reduce((s, m) => s + m.longitude, 0) / group.length
+      const cluster = new googleMaps.maps.Marker({
+        position: { lat, lng },
+        map,
+        zIndex: 1000,
+        label: { text: String(group.length), color: '#fff', fontSize: '13px', fontWeight: '700' },
+        icon: { url: CLUSTER_SVG, scaledSize: new googleMaps.maps.Size(46, 46) },
+      })
+      cluster.addListener('click', () => {
+        map.setZoom((map.getZoom() || 11) + 2)
+        map.panTo({ lat, lng })
+      })
+      clusterMarkers.push(cluster)
+    }
   })
+}
 
-  const bounds = new googleMaps.maps.LatLngBounds()
-  valid.forEach(m => bounds.extend({ lat: m.latitude, lng: m.longitude }))
-  map.fitBounds(bounds)
+function updateMarkers(shouldFit = true) {
+  renderMarkers()
+  if (shouldFit) {
+    const valid = props.markers.filter(m => m.latitude && m.longitude)
+    if (valid.length) {
+      const bounds = new googleMaps.maps.LatLngBounds()
+      valid.forEach(m => bounds.extend({ lat: m.latitude, lng: m.longitude }))
+      map.fitBounds(bounds)
+    }
+  }
 }
 
 function setActive(id) {
@@ -175,7 +244,17 @@ function setActive(id) {
 }
 
 function focusMarker(id) {
-  setActive(id)
+  if (!map || !googleMaps) return
+  const entry = markerById.get(id)
+  if (entry) {
+    setActive(id)
+    return
+  }
+  const m = props.markers.find(x => x.id === id)
+  if (m && m.latitude && m.longitude) {
+    map.panTo({ lat: m.latitude, lng: m.longitude })
+    map.setZoom(Math.max(map.getZoom() || 11, 14))
+  }
 }
 
 defineExpose({ focusMarker })
@@ -193,6 +272,8 @@ onBeforeUnmount(() => {
   if (themeObserver) themeObserver.disconnect()
   markerById.forEach(entry => entry.marker.setMap(null))
   markerById.clear()
+  clusterMarkers.forEach(m => m.setMap(null))
+  clusterMarkers = []
   map = null
 })
 </script>
