@@ -148,6 +148,12 @@
           <option value="rating">Rating tertinggi</option>
           <option value="name">Nama (A-Z)</option>
         </select>
+        <select v-model="priceRange" class="select" @change="emitFilterNow" aria-label="Rentang harga">
+          <option value="">Semua harga</option>
+          <option value="0-1000000">≤ Rp1 jt</option>
+          <option value="1000000-2000000">Rp1–2 jt</option>
+          <option value="2000000-999999999">≥ Rp2 jt</option>
+        </select>
         <button
           class="btn btn-fav"
           :class="{ active: favoritesOnly }"
@@ -192,6 +198,7 @@ const filterDistrict = ref('')
 const filterKelurahan = ref('')
 const minRating = ref('')
 const sort = ref('created_at')
+const priceRange = ref('')
 const favoritesOnly = ref(false)
 
 const favCount = computed(() => favoritesCount())
@@ -204,6 +211,7 @@ watch(() => props.filters, (f) => {
   filterKelurahan.value = f.kelurahan || ''
   minRating.value = f.min_rating != null ? String(f.min_rating) : ''
   sort.value = f.sort || 'created_at'
+  priceRange.value = f.price_min != null ? `${f.price_min}-${f.price_max ?? 999999999}` : ''
   favoritesOnly.value = !!f.favorites_only
 }, { deep: true })
 
@@ -221,6 +229,7 @@ const hasActiveFilter = computed(() => !!(
   filterDistrict.value ||
   filterKelurahan.value ||
   minRating.value ||
+  priceRange.value ||
   sort.value !== 'created_at' ||
   favoritesOnly.value
 ))
@@ -235,12 +244,21 @@ function emitScrape() {
 }
 
 function buildFilterPayload() {
+  let priceMin
+  let priceMax
+  if (priceRange.value) {
+    const [min, max] = priceRange.value.split('-').map(Number)
+    priceMin = min
+    priceMax = max
+  }
   return {
     search: search.value || undefined,
     city: filterCity.value || undefined,
     district: filterDistrict.value || undefined,
     kelurahan: filterKelurahan.value || undefined,
     min_rating: minRating.value ? Number(minRating.value) : undefined,
+    price_min: priceMin,
+    price_max: priceMax,
     sort: sort.value,
     favorites_only: favoritesOnly.value || undefined,
   }
@@ -293,6 +311,7 @@ function resetFilters() {
   filterDistrict.value = ''
   filterKelurahan.value = ''
   minRating.value = ''
+  priceRange.value = ''
   sort.value = 'created_at'
   favoritesOnly.value = false
   emitFilterNow()

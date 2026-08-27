@@ -122,6 +122,7 @@ import { fetchKos, triggerScrape } from '../utils/api.js'
 import { isFavorite, favoriteIds } from '../utils/favorites.js'
 import { addRecentSearch } from '../utils/history.js'
 import { kosToCsv, downloadCsv } from '../utils/csv.js'
+import { parseMonthlyPrice } from '../utils/price.js'
 
 const route = useRoute()
 
@@ -164,8 +165,20 @@ function withFavorites(params) {
 }
 
 const displayKos = computed(() => {
-  if (!favoritesOnly.value) return kosList.value
-  return kosList.value.filter(k => isFavorite(k))
+  let list = favoritesOnly.value ? kosList.value.filter(k => isFavorite(k)) : kosList.value
+
+  const min = filters.value.price_min
+  const max = filters.value.price_max
+  if (min != null || max != null) {
+    list = list.filter(k => {
+      const price = parseMonthlyPrice(k.price_range)
+      if (price == null) return true
+      if (min != null && price < min) return false
+      if (max != null && price > max) return false
+      return true
+    })
+  }
+  return list
 })
 
 const dashSub = computed(() => {

@@ -51,6 +51,18 @@
         />
         <InfoSection :kos="kos" />
       </div>
+
+      <div v-if="related.length" class="related">
+        <h2 class="related-title">Kos lain di {{ kos.city }}</h2>
+        <div class="related-grid">
+          <KosCard
+            v-for="k in related"
+            :key="k.id"
+            :kos="k"
+            @click="openRelated(k.id)"
+          />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -59,9 +71,10 @@
 import { ref, inject, onMounted } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
 import StateCard from '../components/StateCard.vue'
+import KosCard from '../components/KosCard.vue'
 import GallerySection from '../components/detail/GallerySection.vue'
 import InfoSection from '../components/detail/InfoSection.vue'
-import { fetchKosDetail } from '../../utils/api.js'
+import { fetchKosDetail, fetchKos } from '../../utils/api.js'
 
 const route = useRoute()
 const kosId = route.params.id
@@ -71,6 +84,7 @@ const navigate = inject('navigate')
 const kos = ref(null)
 const loading = ref(true)
 const error = ref('')
+const related = ref([])
 
 useHead({
   title: 'Detail kos — Kos Finder',
@@ -81,11 +95,28 @@ async function loadDetail() {
   error.value = ''
   try {
     kos.value = await fetchKosDetail(kosId)
+    await loadRelated()
   } catch (e) {
     error.value = e.response?.data?.detail || e.message
   } finally {
     loading.value = false
   }
+}
+
+async function loadRelated() {
+  if (!kos.value?.city) return
+  try {
+    const res = await fetchKos({ city: kos.value.city, limit: 6 })
+    related.value = (res.data || [])
+      .filter(k => k.id !== kosId)
+      .slice(0, 4)
+  } catch (e) {
+    related.value = []
+  }
+}
+
+function openRelated(id) {
+  navigate('detail', { id })
 }
 
 onMounted(() => loadDetail())
@@ -243,6 +274,43 @@ onMounted(() => loadDetail())
 
 @media (max-width: 860px) {
   .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Related rail ────────────────── */
+.related {
+  padding: 28px 30px 32px;
+  border-top: 1px solid var(--line);
+}
+
+.related-title {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+  color: var(--ink);
+}
+
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 980px) {
+  .related-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .related {
+    padding: 22px 18px 26px;
+  }
+
+  .related-grid {
     grid-template-columns: 1fr;
   }
 }
