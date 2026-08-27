@@ -23,7 +23,11 @@ import { Loader } from '@googlemaps/js-api-loader'
 import AppIcon from './AppIcon.vue'
 import { isHttpUrl } from '../utils/api.js'
 
-const props = defineProps({ markers: Array })
+const props = defineProps({
+  markers: Array,
+  highlightId: { type: [String, Number], default: null },
+})
+const emit = defineEmits(['select'])
 
 const mapContainer = ref(null)
 const error = ref('')
@@ -32,7 +36,7 @@ const markerCount = ref(0)
 
 let googleMaps = null
 let map = null
-let markersLayer = []
+let markerById = new Map()
 let themeObserver = null
 
 const DEFAULT_CENTER = { lat: -6.9175, lng: 107.6191 }
@@ -80,6 +84,16 @@ async function initMap() {
   }
 }
 
+function iconFor(active) {
+  const w = active ? 46 : 36
+  const h = active ? 58 : 46
+  return {
+    url: PIN_SVG,
+    scaledSize: new googleMaps.maps.Size(w, h),
+    anchor: new googleMaps.maps.Point(w / 2, h - 2),
+  }
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -117,29 +131,26 @@ function popupHtml(m) {
 
 function updateMarkers() {
   if (!map || !googleMaps) return
-  markersLayer.forEach(m => m.setMap(null))
-  markersLayer = []
+  markerById.forEach(entry => entry.marker.setMap(null))
+  markerById.clear()
 
   const valid = props.markers.filter(m => m.latitude && m.longitude)
   markerCount.value = valid.length
   if (valid.length === 0) return
-
-  const icon = {
-    url: PIN_SVG,
-    scaledSize: new googleMaps.maps.Size(36, 46),
-    anchor: new googleMaps.maps.Point(18, 44),
-  }
 
   valid.forEach(m => {
     const marker = new googleMaps.maps.Marker({
       position: { lat: m.latitude, lng: m.longitude },
       map,
       title: m.name,
-      icon,
+      icon: iconFor(m.id === props.highlightId),
     })
     const info = new googleMaps.maps.InfoWindow({ content: popupHtml(m) })
-    marker.addListener('click', () => info.open({ map, anchor: marker }))
-    markersLayer.push(marker)
+    marker.addListener('click', () => {
+      emit('select', m.id)
+      info.open({ map, anchor: marker })
+    })
+    markerById.set(m.id, { marker, info })
   })
 
   const bounds = new googleMaps.maps.LatLngBounds()
@@ -147,14 +158,41 @@ function updateMarkers() {
   map.fitBounds(bounds)
 }
 
+function setActive(id) {
+  if (!map || !googleMaps) return
+  markerById.forEach((entry, key) => {
+    const active = key === id
+    entry.marker.setIcon(iconFor(active))
+    if (!active && entry.info.getMap()) entry.info.close()
+  })
+  if (id != null) {
+    const entry = markerById.get(id)
+    if (entry) {
+      map.panTo(entry.marker.getPosition())
+      entry.info.open({ map, anchor: entry.marker })
+    }
+  }
+}
+
+function focusMarker(id) {
+  setActive(id)
+}
+
+defineExpose({ focusMarker })
+
+watch(
+  () => props.highlightId,
+  id => setActive(id),
+)
+
 onMounted(initMap)
 
 watch(() => props.markers, () => updateMarkers(), { deep: true })
 
 onBeforeUnmount(() => {
   if (themeObserver) themeObserver.disconnect()
-  markersLayer.forEach(m => m.setMap(null))
-  markersLayer = []
+  markerById.forEach(entry => entry.marker.setMap(null))
+  markerById.clear()
   map = null
 })
 </script>

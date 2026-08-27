@@ -72,8 +72,12 @@
             :key="kos.id"
             :max="5"
             :scale="1.01"
+            :data-kos-id="kos.id"
+            :class="{ 'is-active': activeId === kos.id }"
+            @mouseenter="activeId = kos.id; mapRef?.focusMarker?.(kos.id)"
+            @mouseleave="activeId = null"
           >
-            <KosCard :kos="kos" @click="openDetail(kos.id)" />
+            <KosCard :kos="kos" :active="activeId === kos.id" @click="openDetail(kos.id)" />
           </TiltCard>
           <button v-if="total > kosList.length" class="btn-load-more" @click="loadMore" :disabled="loadingMore">
             <span v-if="loadingMore" class="spinner-sm"></span>
@@ -98,7 +102,7 @@
 
       <div class="map-container">
         <ClientOnly>
-          <MapView :markers="displayKos" />
+          <MapView ref="mapRef" :markers="displayKos" :highlight-id="activeId" @select="onMarkerSelect" />
         </ClientOnly>
       </div>
     </div>
@@ -132,6 +136,8 @@ const filtering = ref(false)
 const scraping = ref(false)
 const scrapingCity = ref('')
 const scrapeAreas = ref([])
+const mapRef = ref(null)
+const activeId = ref(null)
 const error = ref('')
 const filters = ref({})
 const page = ref(0)
@@ -201,6 +207,12 @@ function shortDistrict(d) {
 
 function openDetail(id) {
   navigate('detail', { id })
+}
+
+function onMarkerSelect(id) {
+  activeId.value = id
+  const el = document.querySelector(`[data-kos-id="${id}"]`)
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
 async function exportCsv() {

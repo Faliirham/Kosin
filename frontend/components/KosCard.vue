@@ -1,6 +1,7 @@
 <template>
   <article
     class="kos-card"
+    :class="{ 'is-active': active }"
     role="button"
     tabindex="0"
     @click="$emit('click')"
@@ -78,7 +79,7 @@ import AppIcon from './AppIcon.vue'
 import { isHttpUrl } from '../utils/api.js'
 import { isFavorite, toggleFavorite } from '../utils/favorites.js'
 
-const props = defineProps({ kos: Object })
+const props = defineProps({ kos: Object, active: Boolean })
 defineEmits(['click'])
 
 const photoFailed = ref(false)
@@ -150,6 +151,11 @@ const shortDistrict = computed(() => {
 .kos-card:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.kos-card.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-lg);
 }
 
 /* ── Photo ────────────────────────── */
