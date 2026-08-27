@@ -59,11 +59,12 @@
 
 <script setup>
 import AppIcon from '../AppIcon.vue'
+import { roomIllustration } from '../utils/illustrations.js'
 
-const imgRoom1 = 'https://picsum.photos/seed/kos-room-1/1000/700'
-const imgRoom2 = 'https://picsum.photos/seed/kos-room-2/800/1000'
-const altRoom1 = 'Kamar kos dengan pencahayaan alami'
-const altRoom2 = 'Sudut kamar kos yang rapi dan modern'
+const imgRoom1 = roomIllustration
+const imgRoom2 = roomIllustration
+const altRoom1 = 'Ilustrasi kamar kos dengan pencahayaan alami'
+const altRoom2 = 'Ilustrasi sudut kamar kos yang rapi dan modern'
 
 function onMove(e) {
   const el = e.currentTarget

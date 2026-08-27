@@ -108,8 +108,10 @@ const city = ref('')
 
 const popularCities = ['Bandung', 'Jakarta', 'Yogyakarta', 'Surabaya', 'Malang', 'Semarang']
 
-const heroImg = 'https://picsum.photos/seed/kos-finder-hero/900/1150'
-const altHero = 'Suasana kamar kos yang hangat dan nyaman'
+import { roomIllustration } from '../utils/illustrations.js'
+
+const heroImg = roomIllustration
+const altHero = 'Ilustrasi kamar kos yang hangat dan nyaman'
 
 function goCity(c) {
   emit('go-city', c.trim())

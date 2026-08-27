@@ -37,7 +37,7 @@ export default defineNuxtConfig({
           content:
             'Cari kos-kosan di seluruh Indonesia. Data langsung dari Google Maps, lengkap dengan rating, foto, dan lokasi.',
         },
-        { property: 'og:image', content: 'https://picsum.photos/seed/kos-og/1200/630' },
+        { property: 'og:image', content: '/og-image.svg' },
         { property: 'og:locale', content: 'id_ID' },
         { name: 'twitter:card', content: 'summary_large_image' },
       ],
