@@ -11,7 +11,7 @@ from app.models import Kos
 from app.schemas import AreaCount, ScrapeRequest, ScrapeResponse
 from app.scraper import scrape_kos
 
-router = APIRouter(prefix="", tags=["Scraper"])
+router = APIRouter(prefix="/api", tags=["Scraper"])
 
 # Serialisasi scrape dalam satu worker agar request konkuren tidak
 # menduplikasi baris maupun membakar quota Google Places.

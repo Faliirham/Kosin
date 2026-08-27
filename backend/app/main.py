@@ -51,6 +51,6 @@ app.include_router(kos.router)
 app.include_router(stats.router)
 
 
-@app.get("/health")
+@app.get("/api/health")
 async def health():
     return {"status": "ok"}

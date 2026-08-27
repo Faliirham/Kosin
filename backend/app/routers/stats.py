@@ -9,7 +9,7 @@ from app.database import get_db
 from app.models import Kos
 from app.places import TTLCache
 
-router = APIRouter(prefix="", tags=["Stats"])
+router = APIRouter(prefix="/api", tags=["Stats"])
 
 PRICE_ORDER = ["Murah", "Sedang", "Mahal", "Sangat Mahal"]
 MAX_CITIES = 30
