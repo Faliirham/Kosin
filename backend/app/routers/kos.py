@@ -10,7 +10,7 @@ from app.database import get_db
 from app.models import Kos
 from app.schemas import KosResponse, PaginatedKos
 
-router = APIRouter(prefix="/api/kos", tags=["Kos"])
+router = APIRouter(prefix="/kos", tags=["Kos"])
 
 logger = logging.getLogger(__name__)
 

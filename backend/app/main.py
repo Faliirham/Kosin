@@ -10,7 +10,7 @@ from app.routers import scraper, kos, stats
 
 
 def _cors_origins() -> list[str]:
-    raw = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+    raw = os.getenv("CORS_ORIGINS", "http://localhost:3000")
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
@@ -51,6 +51,6 @@ app.include_router(kos.router)
 app.include_router(stats.router)
 
 
-@app.get("/api/health")
+@app.get("/health")
 async def health():
     return {"status": "ok"}
