@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session
 from app.models import Kos
+from app.overpass import fetch_overpass_kos
 from app.schemas import ScrapeRequest
 from app.scraper import scrape_kos
 
@@ -72,6 +73,22 @@ async def _run_scrape(req: ScrapeRequest, city_key: str) -> None:
                     lng=req.lng,
                     radius_km=req.radius_km,
                 )
+                if not results:
+                    logger.info("Google kosong untuk %s, mencoba seed OSM/Overpass", req.city)
+                    try:
+                        osm = await fetch_overpass_kos(
+                            city=req.city,
+                            district=req.district,
+                            kelurahan=req.kelurahan,
+                            lat=req.lat,
+                            lng=req.lng,
+                            radius_km=req.radius_km,
+                        )
+                        if osm:
+                            results = osm
+                            logger.info("Seed OSM menghasilkan %d baris untuk %s", len(osm), req.city)
+                    except Exception as e:  # noqa: BLE001
+                        logger.warning("Seed OSM gagal untuk %s: %s", req.city, e)
                 new_count = 0
                 areas: dict[str, int] = {}
                 seen_areas: set[str] = set()
