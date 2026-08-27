@@ -21,6 +21,39 @@
 
 ---
 
+## Status Implementasi (per Agustus 2026)
+
+> **Keputusan operasional:** Arsitektur saat ini **dipertahankan** (data Google tetap
+> disimpan permanen seperti ada). Refactor legal Fase 1 dan deploy Fase 3 **diluar scope**
+> untuk saat ini — fokus ke penguatan (hardening), seed OSM, dan polish UI/UX agar nyaman
+> dipakai di lokal. Peluncuran publik tetap menanggung risiko ToS Google (catatan di §2.4).
+
+### Yang sudah dikerjakan
+
+- **Batch 1 — Restore `/api` prefix & port DB**; commit `c092077`.
+- **Batch 2 — Hardening scraper** (merangkum `§7.3` #1, #2, #3, #6):
+  - Lock per-kota (`dict` `asyncio.Lock`) — kota berbeda scrape paralel, kota sama di-dedup.
+  - Rate-limit 3 scrape/jam/IP (429 bila melampaui).
+  - `POST /api/scrape` menjalankan background task + 202 langsung; frontend poll `GET /api/kos`.
+  - `run_migrations` menambah ekstensi `pg_trgm` + index GIN trigram (city/district/kelurahan).
+  - commit `0947299`.
+- **Batch 3 — Seed OSM/Overpass** (`§Fase 1`): `backend/app/overpass.py` mengambil kos dari
+  Overpass saat Google kosong; commit `ffaf484`.
+- **Batch 5 — UI/UX Full**:
+  - Ganti picsum dengan ilustrasi SVG branded (`utils/illustrations.js`, `public/og-image.svg`); `aef8702`.
+  - Sync list↔peta (hover/click menyorot marker & card); `3050777`.
+  - Staggered entrance `KosCard` + marker clustering di peta; `bad8bcc`.
+  - Rail "Kos lain di {city}" di detail + filter harga + lightbox galeri; `505073a`.
+
+### Belum dikerjakan (luar scope saat ini)
+
+- Fase 1 — refactor legal (hanya `place_id` yang disimpan) — **ditunda**.
+- Fase 2 — fitur klaim & monetisasi — belum.
+- Fase 3 — Docker/deploy — **ditunda** (tidak ada deploy).
+- Fase 4 — skala & maturasi — belum.
+
+---
+
 ## 1. Ringkasan Eksekutif
 
 **Kosin** adalah platform pencarian kos-kosan (boarding house) yang menghubungkan **pencari kos** dengan **pemilik kos** secara langsung — tanpa perantara pihak ketiga. Saat ini berjalan sebagai aplikasi full-stack (FastAPI + Vue 3 + PostgreSQL) dengan data dari Google Places API dan geocode fallback OpenStreetMap.
